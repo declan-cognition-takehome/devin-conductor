@@ -430,6 +430,20 @@ describe('reconciliation', () => {
     expect(task.needs_attention_reason).toContain('exit');
   });
 
+  it('replaces the waiting-on-a-reply reason once the session ends', async () => {
+    const { taskId, attemptId } = await dispatched();
+    devinState.session = session({ status: 'running', status_detail: 'waiting_for_user' });
+    await reconcileAttempt(attemptId);
+    expect(store.getTask(taskId)?.secondary_outcome).toBe('awaiting_input');
+
+    devinState.session = session({ status: 'suspended', status_detail: 'user_request' });
+    await reconcileAttempt(attemptId);
+
+    const task = store.getTask(taskId)!;
+    expect(task.secondary_outcome).toBe('devin_suspended');
+    expect(task.needs_attention_reason).toBe('Devin session ended: suspended (user_request)');
+  });
+
   it('schedules the next poll only after the reconcile job releases its dedupe key', async () => {
     const { attemptId } = await dispatched();
     devinState.session = session({ status: 'running', status_detail: 'working' });

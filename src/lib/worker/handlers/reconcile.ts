@@ -20,6 +20,9 @@ import { redact } from '../../redact';
 
 const MAX_MESSAGE_CHARS = 8_000;
 
+export const AWAITING_INPUT_REASON =
+  'Devin is waiting for a human reply in the session before it can continue.';
+
 export async function reconcileAttempt(attemptId: string): Promise<void> {
   const attempt = getAttempt(attemptId);
   if (!attempt?.devin_session_id) return;
@@ -114,11 +117,12 @@ export async function reconcileAttempt(attemptId: string): Promise<void> {
   const updated = recomputeTaskState(task.id);
   if (updated?.ui_state === 'needs_attention') {
     if (updated.secondary_outcome === 'awaiting_input') {
-      updateTask(task.id, {
-        needs_attention_reason:
-          'Devin is waiting for a human reply in the session before it can continue.',
-      });
-    } else if (!updated.needs_attention_reason) {
+      updateTask(task.id, { needs_attention_reason: AWAITING_INPUT_REASON });
+      // A session that stopped waiting owns a new reason: the waiting one is no longer true.
+    } else if (
+      !updated.needs_attention_reason ||
+      updated.needs_attention_reason === AWAITING_INPUT_REASON
+    ) {
       updateTask(task.id, {
         needs_attention_reason: session.status_detail
           ? `Devin session ended: ${session.status} (${session.status_detail})`
