@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import clsx from 'clsx';
 import type { InstallationRow, RepositoryRow, SettingsRow } from '@/lib/db/types';
 import { getJson, patchJson, postJson } from '@/lib/client/api';
 import { Card, ErrorState, Skeleton, formatRelative, formatTime } from './ui';
@@ -340,38 +341,66 @@ function NumberField({
   onCommit: (value: number | null) => void;
 }) {
   const [draft, setDraft] = useState(value === null ? '' : String(value));
+  const [invalid, setInvalid] = useState<string | null>(null);
 
   useEffect(() => {
     setDraft(value === null ? '' : String(value));
+    setInvalid(null);
   }, [value]);
+
+  function reset() {
+    setDraft(value === null ? '' : String(value));
+  }
 
   function commit() {
     if (draft.trim() === '') {
-      if (nullable && value !== null) onCommit(null);
+      if (nullable) {
+        setInvalid(null);
+        if (value !== null) onCommit(null);
+        return;
+      }
+      setInvalid(`Enter a whole number between ${min} and ${max}.`);
+      reset();
       return;
     }
     const parsed = Number(draft);
-    if (!Number.isInteger(parsed) || parsed < min || parsed > max || parsed === value) return;
-    onCommit(parsed);
+    if (!Number.isInteger(parsed) || parsed < min || parsed > max) {
+      setInvalid(`Enter a whole number between ${min} and ${max}.`);
+      reset();
+      return;
+    }
+    setInvalid(null);
+    if (parsed !== value) onCommit(parsed);
   }
 
   return (
-    <label className="flex items-center justify-between gap-4 text-sm">
-      <span>
-        {label}
-        {hint && <span className="block text-xs text-ink-muted">{hint}</span>}
-      </span>
-      <input
-        type="number"
-        inputMode="numeric"
-        min={min}
-        max={max}
-        value={draft}
-        disabled={disabled}
-        onChange={(event) => setDraft(event.target.value)}
-        onBlur={commit}
-        className="w-24 rounded-md border border-border-subtle bg-surface px-2 py-1 text-right text-sm"
-      />
-    </label>
+    <div className="space-y-1">
+      <label className="flex items-center justify-between gap-4 text-sm">
+        <span>
+          {label}
+          {hint && <span className="block text-xs text-ink-muted">{hint}</span>}
+        </span>
+        <input
+          type="number"
+          inputMode="numeric"
+          min={min}
+          max={max}
+          value={draft}
+          disabled={disabled}
+          aria-invalid={invalid !== null}
+          onChange={(event) => setDraft(event.target.value)}
+          onBlur={commit}
+          className={clsx(
+            'w-24 rounded-md border bg-surface px-2 py-1 text-right text-sm',
+            invalid ? 'border-critical' : 'border-border-subtle',
+          )}
+        />
+      </label>
+      {invalid && (
+        <p role="alert" className="text-right text-xs text-critical">
+          {invalid}
+        </p>
+      )}
+    </div>
   );
 }
