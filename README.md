@@ -1,19 +1,25 @@
 # Devin Conductor
 
-As part of our vision for an event-based SDLC, the Devon Conductor automatically resolves GitHub Issues using Devin, the AI coding agent.
+Conductor turns GitHub issues into Devin sessions.
 
-When a member of the configured GitHub organization opens an issue in an enabled repository,
-Conductor dispatches a Devin session scoped to that repository,
-keeps a single status comment on the issue up to date, and tracks the resulting pull request
-until a human merges or closes it.
+When someone in the configured GitHub org opens an issue in an enabled repository, Conductor
+starts a Devin session for that repository, keeps one status comment on the issue up to date,
+and tracks the resulting pull request until a person merges or closes it.
 
-## Product surfaces
+It was built for a take-home exercise: pick issues in a fork of Apache Superset, have Devin fix
+them from an event trigger, and show enough reporting that an engineering lead can tell whether
+it is working.
 
-| Surface       | Purpose                                                                                 |
-| ------------- | --------------------------------------------------------------------------------------- |
-| **Observe**   | Live task list and task detail: state, Devin session deep link, messages, pull requests |
-| **Report**    | Dispatch, PR and merge rates, median time to PR, per-repository breakdown               |
-| **Configure** | Repository enablement, concurrency ceiling, ACU limit, global pause, connection checks  |
+## The UI
+
+Three pages:
+
+- **Observe** – list of tasks and their current state. Each task links to the Devin session and
+  shows messages and pull requests.
+- **Report** – how many issues were dispatched, how many got a PR, how many were merged, median
+  time to PR, and the same numbers per repository.
+- **Configure** – which repositories are enabled, max concurrent sessions, ACU limit, a global
+  pause switch, and connection checks for GitHub and Devin.
 
 ## Architecture
 
@@ -29,33 +35,34 @@ GitHub  ──webhook──▶  /api/github/webhook  ──▶  webhook_deliveri
                                         GitHub status comment ◀──┘          └──▶ Devin v3 API
 ```
 
-- **Next.js App Router + TypeScript**, one always-running container.
-- **SQLite via `better-sqlite3`** (WAL, foreign keys, busy timeout) with transactional migrations
-  applied at startup. Everything durable lives on one mounted volume.
-- **Durable job queue in SQLite**: transactional claims, two-minute leases, expired-lease
-  recovery after a crash or restart, bounded exponential backoff with jitter, dedupe keys, and a
-  separate defer path that refunds attempts for pause/concurrency backpressure.
-- **Exactly one worker** runs in the process where `WORKER_ENABLED=true`.
+- Next.js (App Router) and TypeScript, running as a single container.
+- SQLite via `better-sqlite3`. Migrations run at startup. All state lives on one mounted volume.
+- The job queue is a SQLite table. Jobs are claimed in a transaction with a two-minute lease;
+  if the process dies the lease expires and the job is picked up again. Failed jobs retry with
+  exponential backoff. Jobs that can't run yet because of the pause switch or the concurrency
+  limit are deferred without counting as a failed attempt.
+- One worker loop runs in the process where `WORKER_ENABLED=true`.
 
-### Design decisions worth knowing
+### Design notes
 
-- **Nothing is dispatched from the request path.** The webhook only verifies, persists, and
-  enqueues, then returns `202`. Devin is called from the worker, so GitHub retries and Devin
-  latency are decoupled.
-- **Trust is checked before dispatch, and fails closed.** The repository must belong to the
-  configured org, be actively installed, and be enabled locally; the issue author must be an
-  active org member. If membership cannot be verified, the job retries rather than dispatching.
-- **Issue content is untrusted input.** The remediation prompt puts trusted instructions first
-  and fences the issue title/body inside an explicit untrusted block.
-- **Uncertain dispatch is recoverable.** Every attempt carries a unique dispatch tag. If session
-  creation times out with an ambiguous result, recovery looks the session up by exact tag and
-  adopts it instead of creating a duplicate; multiple matches adopt the newest and record an
-  anomaly for a human.
-- **PR facts beat session status.** Business state (`merged`, `pr_ready`) is recomputed from
-  pull request facts before falling back to raw Devin status.
-- **One issue comment.** The status comment is created once and edited afterwards, and is only
-  rewritten when the rendered body hash changes. A deleted comment is recreated.
-- **No fabricated numbers.** Ratios with an empty denominator render as `—`.
+- The webhook handler doesn't call Devin. It verifies the signature, stores the delivery,
+  enqueues a job, and returns `202`. The worker does the rest, so GitHub's delivery timeout and
+  Devin's API latency don't interact.
+- Before dispatching, the worker checks that the repository is in the configured org, that the
+  app is still installed on it, that it's enabled in Configure, and that the issue author is an
+  org member. If the membership check itself fails (e.g. GitHub is down), the job retries later
+  rather than dispatching.
+- Issue titles and bodies come from users, so the prompt sent to Devin puts our instructions
+  first and wraps the issue text in a clearly marked untrusted block.
+- Each dispatch attempt gets a unique tag that is passed to Devin. If the create-session call
+  times out and we don't know whether it succeeded, the worker searches sessions by that tag and
+  adopts the match instead of creating a second session. If there is somehow more than one
+  match it takes the newest and flags it for review.
+- Task state is derived from pull request facts first (merged, open, closed) and only falls back
+  to Devin's session status when there is no PR.
+- The status comment on the issue is created once and edited afterwards. It's only rewritten
+  when the content actually changes, and it's recreated if someone deletes it.
+- Rates with a zero denominator are shown as `—` rather than `0%`.
 
 ## Running it
 
@@ -65,7 +72,7 @@ npm install
 npm run dev               # http://localhost:3000
 ```
 
-Docker (how it is meant to run in production):
+With Docker:
 
 ```bash
 docker compose up --build -d
@@ -130,7 +137,15 @@ of crashing the app. See `.env.example` for the full list.
 npm run format:check && npm run lint && npm run typecheck && npm test && npm run build
 ```
 
-Coverage focuses on the parts where being wrong is expensive: signature verification, prompt
-fencing, state precedence, queue leases/backoff/deferral, the full webhook→trust→dispatch→
-reconcile→PR pipeline against a mocked Devin and GitHub, status-comment idempotency, metrics
-with empty denominators, and session cookie tampering.
+Unit tests (`tests/unit`) cover webhook signature verification, prompt construction, state
+derivation, backoff, log redaction, and session cookies.
+
+Integration tests (`tests/integration`) run against a real SQLite database with GitHub and Devin
+mocked: the webhook route, the job queue (leases, retries, deferral), the status comment, the
+metrics queries, and the full pipeline from webhook to dispatch to reconcile to PR.
+
+To see the UI with data but without a live GitHub App, seed a demo database:
+
+```bash
+DATABASE_PATH=./data/devin-conductor.sqlite npx tsx scripts/seed-demo.ts
+```
