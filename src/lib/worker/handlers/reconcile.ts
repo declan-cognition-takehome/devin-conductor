@@ -3,7 +3,6 @@ import {
   addTaskEvent,
   getAttempt,
   getRepository,
-  getSettings,
   getTask,
   insertMessages,
   listPullRequests,
@@ -132,17 +131,8 @@ export async function reconcileAttempt(attemptId: string): Promise<void> {
   }
 
   enqueueJob({ jobType: 'sync_comment', entityId: task.id, dedupeKey: `comment:${task.id}` });
-
-  if (!terminal) {
-    const settings = getSettings();
-    enqueueJob({
-      jobType: 'reconcile_attempt',
-      entityId: attemptId,
-      dedupeKey: `reconcile:${attemptId}`,
-      availableAt: Date.now() + settings.poll_interval_seconds * 1000,
-      maxAttempts: 10,
-    });
-  }
+  // The next poll is scheduled by the worker after this job completes: while the job is still
+  // claimed it holds `reconcile:<attemptId>`, and the dedupe index would drop the insert.
 }
 
 /** Pulls only messages newer than the stored cursor and deduplicates by Devin event ID. */

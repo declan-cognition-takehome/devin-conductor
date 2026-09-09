@@ -4,6 +4,7 @@ import { config } from '../config';
 import {
   addTaskEvent,
   getAttempt,
+  getSettings,
   getTask,
   listActiveAttempts,
   listOpenPullRequests,
@@ -87,6 +88,7 @@ export class Worker {
     try {
       await runJob(job);
       completeJob(job.id);
+      scheduleNextPoll(job);
     } catch (error) {
       if (error instanceof DispatchDeferred) {
         deferJob(job, error.retryAfterMs, error.reason);
@@ -112,11 +114,13 @@ export class Worker {
     const now = Date.now();
     if (now - this.lastSweep < SWEEP_INTERVAL_MS) return;
     this.lastSweep = now;
+    const intervalMs = getSettings().poll_interval_seconds * 1000;
     for (const attempt of listActiveAttempts()) {
       enqueueJob({
         jobType: 'reconcile_attempt',
         entityId: attempt.id,
         dedupeKey: `reconcile:${attempt.id}`,
+        availableAt: Math.max(now, (attempt.last_reconciled_at ?? 0) + intervalMs),
       });
     }
     for (const pr of listOpenPullRequests()) {
@@ -127,6 +131,23 @@ export class Worker {
       });
     }
   }
+}
+
+/**
+ * Polling continues from here rather than from inside the handler: a running job still holds
+ * its dedupe key, so a self-scheduled follow-up would be silently dropped by the dedupe index.
+ */
+function scheduleNextPoll(job: JobRow): void {
+  if (job.job_type !== 'reconcile_attempt') return;
+  const attempt = getAttempt(job.entity_id);
+  if (!attempt || attempt.status === 'terminal') return;
+  enqueueJob({
+    jobType: 'reconcile_attempt',
+    entityId: attempt.id,
+    dedupeKey: `reconcile:${attempt.id}`,
+    availableAt: Date.now() + getSettings().poll_interval_seconds * 1000,
+    maxAttempts: 10,
+  });
 }
 
 async function runJob(job: JobRow): Promise<void> {
