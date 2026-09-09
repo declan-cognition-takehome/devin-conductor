@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { AlertTriangle } from 'lucide-react';
 import { config } from '@/lib/config';
 
 export function IntegrationBanner() {
@@ -13,19 +14,20 @@ export function IntegrationBanner() {
   return (
     <div
       role="status"
-      className="rounded-lg border border-caution/40 bg-caution/5 p-3 text-sm text-caution"
+      className="flex items-start gap-2.5 rounded-[8px] border border-caution/35 bg-caution/[0.06] px-3 py-2.5"
     >
-      <p>
-        Automation is inactive: {missing.join(' and ')} not configured. Issues are not ingested and
-        no Devin sessions are dispatched, so this view stays empty.
-      </p>
-      <p className="mt-1 text-xs">
-        Supply the environment variables and restart the container.{' '}
-        <Link href="/configure" className="underline">
-          Configure
-        </Link>{' '}
-        shows current integration status.
-      </p>
+      <AlertTriangle aria-hidden className="mt-px h-3.5 w-3.5 shrink-0 text-caution" />
+      <div className="min-w-0 text-body">
+        <p className="text-ink">Automation is inactive: {missing.join(' and ')} not configured.</p>
+        <p className="mt-0.5 text-meta text-ink-muted">
+          Issues are not ingested and no Devin sessions are dispatched. Supply the environment
+          variables and restart the container.{' '}
+          <Link href="/configure" className="text-accent hover:underline">
+            Configure
+          </Link>{' '}
+          shows current integration status.
+        </p>
+      </div>
     </div>
   );
 }

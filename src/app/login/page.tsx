@@ -23,10 +23,12 @@ export default async function LoginPage({
   const appConfig = config();
 
   return (
-    <div className="mx-auto flex max-w-md flex-col gap-5 py-16">
+    <div className="mx-auto flex max-w-sm flex-col gap-5 py-24">
       <div>
-        <h1 className="text-xl font-semibold tracking-tight">Devin Conductor</h1>
-        <p className="mt-2 text-sm text-ink-muted">
+        <h1 className="text-page-title font-semibold tracking-[-0.01em] text-ink">
+          Devin Conductor
+        </h1>
+        <p className="mt-2 text-body text-ink-muted">
           Turns trusted GitHub issues into managed Devin sessions. Access is limited to active
           members of the configured GitHub organization.
         </p>
@@ -35,7 +37,7 @@ export default async function LoginPage({
       {error && (
         <p
           role="alert"
-          className="rounded-lg border border-critical/40 bg-critical/5 p-3 text-sm text-critical"
+          className="rounded-[8px] border border-critical/40 bg-critical/[0.06] px-3 py-2.5 text-body text-critical"
         >
           {REASONS[error] ?? 'Sign-in failed. Please try again.'}
         </p>
@@ -44,14 +46,14 @@ export default async function LoginPage({
       {appConfig.github.configured ? (
         <a
           href="/api/auth/login"
-          className="inline-flex items-center justify-center rounded-md bg-accent px-4 py-2 text-sm font-medium text-canvas hover:opacity-90"
+          className="inline-flex h-8 items-center justify-center rounded-[6px] bg-accent px-3 text-body font-medium text-canvas transition-colors duration-150 hover:bg-accent-strong"
         >
           Continue with GitHub
         </a>
       ) : (
-        <div className="rounded-lg border border-caution/40 bg-caution/5 p-3 text-sm text-caution">
+        <div className="rounded-[8px] border border-caution/35 bg-caution/[0.06] px-3 py-2.5 text-body text-caution">
           <p>GitHub integration is not configured, so sign-in is unavailable.</p>
-          <p className="mt-1 text-xs">Missing: {appConfig.github.missing.join(', ')}</p>
+          <p className="mt-1 text-meta">Missing: {appConfig.github.missing.join(', ')}</p>
         </div>
       )}
     </div>

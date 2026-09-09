@@ -1,16 +1,43 @@
 @import 'tailwindcss';
 
 @theme {
-  --color-canvas: #0b0e14;
-  --color-surface: #121722;
-  --color-surface-raised: #182031;
-  --color-border-subtle: #232c3d;
-  --color-ink: #e6ebf5;
-  --color-ink-muted: #97a3b8;
-  --color-accent: #6ea8fe;
-  --color-positive: #4ade80;
-  --color-caution: #fbbf24;
-  --color-critical: #f87171;
+  /* Surfaces: near-black charcoal, one subtle step per level. */
+  --color-canvas: #0d1013;
+  --color-nav: #14181d;
+  --color-surface: #161a20;
+  --color-surface-raised: #1d222a;
+  --color-surface-sunken: #101317;
+
+  /* Separators. */
+  --color-border-subtle: #20242b;
+  --color-border: #262b33;
+  --color-border-strong: #333a45;
+
+  /* Text. */
+  --color-ink: #e7eaee;
+  --color-ink-muted: #98a2b0;
+  --color-ink-faint: #6d7684;
+
+  /* Brand + semantics. */
+  --color-accent: #5b93f5;
+  --color-accent-strong: #4a84ee;
+  --color-positive: #5fa97a;
+  --color-caution: #d9a13f;
+  --color-critical: #d1685a;
+
+  --radius-control: 6px;
+  --radius-panel: 8px;
+
+  --text-page-title: 1.375rem;
+  --text-page-title--line-height: 1.75rem;
+  --text-section: 0.8125rem;
+  --text-section--line-height: 1.125rem;
+  --text-body: 0.8125rem;
+  --text-body--line-height: 1.25rem;
+  --text-meta: 0.75rem;
+  --text-meta--line-height: 1.125rem;
+
+  --shadow-overlay: 0 12px 32px -12px rgb(0 0 0 / 0.7);
 }
 
 html,
@@ -26,13 +53,36 @@ body {
     -apple-system,
     'Segoe UI',
     sans-serif;
+  font-size: 0.8125rem;
+  line-height: 1.25rem;
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 :focus-visible {
   outline: 2px solid var(--color-accent);
-  outline-offset: 2px;
+  outline-offset: 1px;
   border-radius: 4px;
+}
+
+/* Timestamps, counts, limits, ACUs and job data all line up. */
+.numeric {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+@keyframes conductor-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.live-dot {
+  animation: conductor-pulse 1.8s ease-in-out infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -40,6 +90,7 @@ body {
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
 }
