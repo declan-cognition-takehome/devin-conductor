@@ -162,11 +162,17 @@ export function ReportView() {
             <Metric
               label="ACUs consumed"
               value={formatAcus(kpis.totalAcus)}
-              hint={kpis.totalAcus === null ? 'No metered usage reported yet' : undefined}
+              hint={
+                kpis.totalAcus === null
+                  ? 'No metered usage reported yet'
+                  : kpis.costsEstimated
+                    ? 'Estimated from session runtime'
+                    : undefined
+              }
               className="bg-canvas"
             />
             <Metric
-              label="Spend"
+              label={kpis.costsEstimated ? 'Spend (est.)' : 'Spend'}
               value={formatUsd(kpis.totalCostUsd)}
               hint={
                 kpis.acuRateUsd === null
@@ -176,7 +182,7 @@ export function ReportView() {
               className="bg-canvas"
             />
             <Metric
-              label="Median cost per PR"
+              label={kpis.costsEstimated ? 'Median cost per PR (est.)' : 'Median cost per PR'}
               value={formatUsd(kpis.medianPrCostUsd)}
               className="bg-canvas"
             />
@@ -265,7 +271,7 @@ export function ReportView() {
               description={
                 kpis.acuRateUsd === null
                   ? 'Set an ACU rate in Configure to price these sessions.'
-                  : 'Session ACUs are split evenly across the pull requests they produced.'
+                  : 'Session usage is split evenly across the pull requests it produced. Rows marked est. are priced from session runtime because Devin reported no metered usage.'
               }
             >
               {data.pullRequestCosts.length === 0 ? (
@@ -303,6 +309,9 @@ export function ReportView() {
                         </td>
                         <td className="numeric py-2 text-right text-ink-muted">
                           {formatUsd(pr.costUsd)}
+                          {pr.estimated && pr.costUsd !== null && (
+                            <span className="ml-1 text-ink-faint">est.</span>
+                          )}
                         </td>
                       </tr>
                     ))}

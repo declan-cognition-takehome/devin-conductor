@@ -136,6 +136,44 @@ describe('collectMetrics', () => {
     store.updateSettings({ acuRateUsd: null });
   });
 
+  it('estimates cost from runtime when Devin reports no metered usage', () => {
+    const taskId = createTask('queued');
+    const attempt = store.createAttempt({ taskId, attemptNumber: 1, dispatchTag: 'tag-est' });
+    const dispatchedAt = Date.now() - 30 * 60_000;
+    store.updateAttempt(attempt.id, {
+      devin_session_id: 'devin-est',
+      dispatched_at: dispatchedAt,
+      terminal_at: dispatchedAt + 30 * 60_000,
+    });
+    store.upsertPullRequest({
+      taskId,
+      attemptId: attempt.id,
+      githubRepoId: 1,
+      repositoryFullName: 'test-org/repo',
+      number: 21,
+      url: 'https://github.com/test-org/repo/pull/21',
+      state: 'open',
+      merged: false,
+      mergedAt: null,
+      prCreatedAt: Date.now(),
+    });
+    store.updateSettings({ acuRateUsd: 2.25 });
+
+    const estimated = collectMetrics(30).pullRequestCosts.find((pr) => pr.number === 21);
+    expect(estimated?.acus).toBe(2);
+    expect(estimated?.costUsd).toBe(4.5);
+    expect(estimated?.estimated).toBe(true);
+    expect(collectMetrics(30).kpis.costsEstimated).toBe(true);
+
+    store.updateSettings({ estimateUnmeteredCosts: false });
+    const unpriced = collectMetrics(30).pullRequestCosts.find((pr) => pr.number === 21);
+    expect(unpriced?.acus).toBeNull();
+    expect(unpriced?.costUsd).toBeNull();
+    expect(collectMetrics(30).kpis.costsEstimated).toBe(false);
+
+    store.updateSettings({ estimateUnmeteredCosts: true, acuRateUsd: null });
+  });
+
   it('excludes rows outside the requested window', () => {
     const metrics = collectMetrics(1);
     const old = collectMetrics(365);

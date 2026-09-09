@@ -38,8 +38,8 @@ function seedSettings(db: Db): void {
   const now = Date.now();
   db.prepare(
     `INSERT OR IGNORE INTO settings (id, paused, max_concurrent_sessions, max_acu_limit,
-       poll_interval_seconds, max_retry_attempts, created_at, updated_at)
-     VALUES (1, 0, 1, NULL, 30, 3, ?, ?)`,
+       acu_rate_usd, poll_interval_seconds, max_retry_attempts, created_at, updated_at)
+     VALUES (1, 0, 1, NULL, 2.25, 30, 3, ?, ?)`,
   ).run(now, now);
 }
 

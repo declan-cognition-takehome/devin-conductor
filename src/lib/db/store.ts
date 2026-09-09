@@ -33,6 +33,7 @@ export interface SettingsUpdate {
   maxConcurrentSessions?: number;
   maxAcuLimit?: number | null;
   acuRateUsd?: number | null;
+  estimateUnmeteredCosts?: boolean;
   pollIntervalSeconds?: number;
   maxRetryAttempts?: number;
 }
@@ -42,7 +43,8 @@ export function updateSettings(update: SettingsUpdate): SettingsRow {
   db()
     .prepare(
       `UPDATE settings SET paused = ?, max_concurrent_sessions = ?, max_acu_limit = ?,
-         acu_rate_usd = ?, poll_interval_seconds = ?, max_retry_attempts = ?, updated_at = ?
+         acu_rate_usd = ?, estimate_unmetered_costs = ?, poll_interval_seconds = ?,
+         max_retry_attempts = ?, updated_at = ?
        WHERE id = 1`,
     )
     .run(
@@ -50,6 +52,11 @@ export function updateSettings(update: SettingsUpdate): SettingsRow {
       update.maxConcurrentSessions ?? current.max_concurrent_sessions,
       update.maxAcuLimit === undefined ? current.max_acu_limit : update.maxAcuLimit,
       update.acuRateUsd === undefined ? current.acu_rate_usd : update.acuRateUsd,
+      update.estimateUnmeteredCosts === undefined
+        ? current.estimate_unmetered_costs
+        : update.estimateUnmeteredCosts
+          ? 1
+          : 0,
       update.pollIntervalSeconds ?? current.poll_interval_seconds,
       update.maxRetryAttempts ?? current.max_retry_attempts,
       now(),
