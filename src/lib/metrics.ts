@@ -88,7 +88,8 @@ const ESTIMATED_CHARS_PER_ACU = 2000;
 const MIN_ESTIMATED_ACUS = 0.25;
 
 function acusExpression(alias: string, estimate: boolean): string {
-  const metered = `${alias}.acus`;
+  // A stored zero means Devin reported nothing, not that the session was free.
+  const metered = `NULLIF(${alias}.acus, 0)`;
   if (!estimate) return metered;
   const transcriptChars = `COALESCE(
      (SELECT SUM(LENGTH(m.message)) FROM devin_messages m WHERE m.attempt_id = ${alias}.id), 0)`;
@@ -158,7 +159,7 @@ export function collectMetrics(windowDays = 30): MetricsSnapshot {
   const acuRow = conn
     .prepare<[number], { total: number | null; estimated: number }>(
       `SELECT SUM(${attemptAcus}) AS total,
-              SUM(CASE WHEN a.acus IS NULL AND a.devin_session_id IS NOT NULL THEN 1 ELSE 0 END)
+              SUM(CASE WHEN COALESCE(a.acus, 0) = 0 AND a.devin_session_id IS NOT NULL THEN 1 ELSE 0 END)
                 AS estimated
        FROM devin_session_attempts a WHERE a.created_at >= ?`,
     )
@@ -245,7 +246,7 @@ export function collectMetrics(windowDays = 30): MetricsSnapshot {
               p.merged AS merged,
               (SELECT (${attemptAcus}) * 1.0 / (SELECT COUNT(*) FROM pull_requests s WHERE s.attempt_id = p.attempt_id)
                FROM devin_session_attempts a WHERE a.id = p.attempt_id) AS acus,
-              (SELECT CASE WHEN a.acus IS NULL THEN 1 ELSE 0 END
+              (SELECT CASE WHEN COALESCE(a.acus, 0) = 0 THEN 1 ELSE 0 END
                FROM devin_session_attempts a WHERE a.id = p.attempt_id) AS estimated
        FROM pull_requests p
        WHERE p.created_at >= ? AND p.task_id IS NOT NULL

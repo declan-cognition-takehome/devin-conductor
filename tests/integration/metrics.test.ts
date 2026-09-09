@@ -139,7 +139,8 @@ describe('collectMetrics', () => {
   it('estimates cost from transcript size when Devin reports no metered usage', () => {
     const taskId = createTask('queued');
     const attempt = store.createAttempt({ taskId, attemptNumber: 1, dispatchTag: 'tag-est' });
-    store.updateAttempt(attempt.id, { devin_session_id: 'devin-est' });
+    // Devin stores a literal zero for unmetered sessions, which must not read as "free".
+    store.updateAttempt(attempt.id, { devin_session_id: 'devin-est', acus: 0 });
     store.insertMessages(attempt.id, [
       {
         devinMessageId: 'm-1',

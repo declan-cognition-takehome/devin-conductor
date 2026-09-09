@@ -2,11 +2,6 @@ export function formatPercent(value: number | null): string {
   return value === null ? '—' : `${Math.round(value * 100)}%`;
 }
 
-export function formatAcus(value: number | null): string {
-  if (value === null) return '—';
-  return value >= 100 ? String(Math.round(value)) : value.toFixed(1);
-}
-
 export function formatUsd(value: number | null): string {
   if (value === null) return '—';
   return value.toLocaleString(undefined, {
