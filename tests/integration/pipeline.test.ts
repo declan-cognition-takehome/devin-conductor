@@ -75,6 +75,8 @@ let TransientProcessingError: typeof import('@/lib/worker/handlers/process-deliv
 let dispatchTask: typeof import('@/lib/worker/handlers/dispatch').dispatchTask;
 let DispatchDeferred: typeof import('@/lib/worker/handlers/dispatch').DispatchDeferred;
 let reconcileAttempt: typeof import('@/lib/worker/handlers/reconcile').reconcileAttempt;
+let Worker: typeof import('@/lib/worker').Worker;
+let db: typeof import('@/lib/db').db;
 let closeDatabase: () => void;
 
 let issueCounter = 0;
@@ -159,7 +161,8 @@ beforeAll(async () => {
     await import('@/lib/worker/handlers/process-delivery'));
   ({ dispatchTask, DispatchDeferred } = await import('@/lib/worker/handlers/dispatch'));
   ({ reconcileAttempt } = await import('@/lib/worker/handlers/reconcile'));
-  ({ closeDatabase } = await import('@/lib/db'));
+  ({ Worker } = await import('@/lib/worker'));
+  ({ db, closeDatabase } = await import('@/lib/db'));
   installRepository();
 });
 
@@ -170,7 +173,7 @@ afterEach(() => {
   devinState.session = null;
   devinState.sessionsByTag = [];
   devinState.messages = [];
-  store.updateSettings({ paused: false, maxConcurrentSessions: 100 });
+  store.updateSettings({ paused: false, maxConcurrentSessions: 100, pollIntervalSeconds: 30 });
 });
 
 afterAll(() => {
@@ -323,6 +326,46 @@ describe('dispatch', () => {
 });
 
 describe('reconciliation', () => {
+  /** Clears the queue, including work scheduled for the future by earlier tests. */
+  function drainJobs(): void {
+    const horizon = Date.now() + 60 * 60_000;
+    for (
+      let claimed = jobs.claimNextJob('drain', horizon);
+      claimed;
+      claimed = jobs.claimNextJob('drain', horizon)
+    ) {
+      jobs.completeJob(claimed.id);
+    }
+  }
+
+  /** Leaves `attemptId` as the only attempt the worker sweep will pick up. */
+  function isolateAttempt(attemptId: string): void {
+    for (const attempt of store.listActiveAttempts()) {
+      if (attempt.id !== attemptId) {
+        store.updateAttempt(attempt.id, { status: 'terminal', terminal_at: Date.now() });
+      }
+    }
+    drainJobs();
+  }
+
+  async function reconcileViaWorker(attemptId: string): Promise<void> {
+    const worker = new Worker({ idleDelayMs: 0 });
+    for (let i = 0; i < 10; i += 1) {
+      await worker.tick();
+      if (store.getAttempt(attemptId)?.last_reconciled_at) return;
+    }
+    throw new Error('worker never reconciled the attempt');
+  }
+
+  function pendingPoll(attemptId: string): { available_at: number } | undefined {
+    return db()
+      .prepare<[string], { available_at: number }>(
+        `SELECT available_at FROM jobs
+         WHERE dedupe_key = ? AND state = 'pending' AND job_type = 'reconcile_attempt'`,
+      )
+      .get(`reconcile:${attemptId}`);
+  }
+
   async function dispatched(): Promise<{ taskId: string; attemptId: string }> {
     const { deliveryId, issueNumber } = issueDelivery();
     await processDelivery(deliveryId);
@@ -385,6 +428,39 @@ describe('reconciliation', () => {
     expect(task.ui_state).toBe('needs_attention');
     expect(task.secondary_outcome).toBe('completed_without_pr');
     expect(task.needs_attention_reason).toContain('exit');
+  });
+
+  it('schedules the next poll only after the reconcile job releases its dedupe key', async () => {
+    const { attemptId } = await dispatched();
+    devinState.session = session({ status: 'running', status_detail: 'working' });
+    isolateAttempt(attemptId);
+    store.updateSettings({ pollIntervalSeconds: 45 });
+    jobs.enqueueJob({
+      jobType: 'reconcile_attempt',
+      entityId: attemptId,
+      dedupeKey: `reconcile:${attemptId}`,
+    });
+
+    await reconcileViaWorker(attemptId);
+
+    const next = pendingPoll(attemptId);
+    expect(next).toBeDefined();
+    expect(next!.available_at).toBeGreaterThan(Date.now() + 40_000);
+  });
+
+  it('stops polling once the session is terminal', async () => {
+    const { attemptId } = await dispatched();
+    devinState.session = session({ status: 'exit' });
+    isolateAttempt(attemptId);
+    jobs.enqueueJob({
+      jobType: 'reconcile_attempt',
+      entityId: attemptId,
+      dedupeKey: `reconcile:${attemptId}`,
+    });
+
+    await reconcileViaWorker(attemptId);
+
+    expect(pendingPoll(attemptId)).toBeUndefined();
   });
 
   it('ignores a malformed pull request URL', async () => {
