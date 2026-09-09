@@ -61,8 +61,8 @@ const SCENARIOS: Scenario[] = [
   {
     daysAgo: 24,
     hour: 9,
-    issueNumber: 6,
-    prNumber: 7,
+    issueNumber: 100,
+    prNumber: 101,
     author: AUTHORS.sarah,
     title: 'Pivot table shows NaN for percentage metrics when denominator is zero',
     body: 'When a pivot table uses a "% of total" metric and the row total is 0, the cell renders `NaN%` instead of an empty cell or 0%.\n\n**Steps**\n1. Create a pivot table chart on the `birth_names` dataset\n2. Add a `% of total` aggregation\n3. Filter to a state with no rows\n\n**Expected:** empty cell or `0%`\n**Actual:** `NaN%`',
@@ -76,7 +76,7 @@ const SCENARIOS: Scenario[] = [
       {
         from: 'devin',
         afterMin: 1,
-        text: 'Starting on issue #6. Reproducing the NaN% cell in the pivot table plugin first, then I will look at the percentage formatter in `superset-frontend/plugins/plugin-chart-pivot-table`.',
+        text: 'Starting on issue #100. Reproducing the NaN% cell in the pivot table plugin first, then I will look at the percentage formatter in `superset-frontend/plugins/plugin-chart-pivot-table`.',
       },
       {
         from: 'devin',
@@ -86,12 +86,12 @@ const SCENARIOS: Scenario[] = [
       {
         from: 'devin',
         afterMin: 23,
-        text: 'PR is up: https://github.com/declan-cognition-takehome/superset/pull/7 — guards the divide in `getPercentageMetric`, adds two jest cases (zero denominator, zero numerator), and the pivot-table plugin test suite is green locally (`npm run test -- plugin-chart-pivot-table`).',
+        text: 'PR is up: https://github.com/declan-cognition-takehome/superset/pull/101 — guards the divide in `getPercentageMetric`, adds two jest cases (zero denominator, zero numerator), and the pivot-table plugin test suite is green locally (`npm run test -- plugin-chart-pivot-table`).',
       },
       {
         from: 'devin',
         afterMin: 192,
-        text: 'PR #7 was merged. Issue #6 is resolved; nothing further pending.',
+        text: 'PR #101 was merged. Issue #100 is resolved; nothing further pending.',
       },
     ],
     sessionEnd: { detail: 'inactivity', afterMin: 230 },
@@ -100,8 +100,8 @@ const SCENARIOS: Scenario[] = [
   {
     daysAgo: 23,
     hour: 14,
-    issueNumber: 8,
-    prNumber: 9,
+    issueNumber: 102,
+    prNumber: 103,
     author: AUTHORS.declan,
     title: 'SQL Lab: "Save dataset" modal ignores schema selection',
     body: 'Saving a query as a dataset from SQL Lab always writes the dataset into the default schema even when a different schema is selected in the modal dropdown.\n\nRegression since the SaveDatasetModal refactor. Only reproduces on Postgres for me.',
@@ -125,12 +125,12 @@ const SCENARIOS: Scenario[] = [
       {
         from: 'devin',
         afterMin: 31,
-        text: 'Opened https://github.com/declan-cognition-takehome/superset/pull/9. The payload now uses the modal selection and falls back to the editor schema only when nothing was picked. Added an RTL test that selects a schema and asserts the POST body. Frontend lint + the SaveDatasetModal tests pass.',
+        text: 'Opened https://github.com/declan-cognition-takehome/superset/pull/103. The payload now uses the modal selection and falls back to the editor schema only when nothing was picked. Added an RTL test that selects a schema and asserts the POST body. Frontend lint + the SaveDatasetModal tests pass.',
       },
       {
         from: 'devin',
         afterMin: 97,
-        text: 'PR #9 merged. Done with issue #8.',
+        text: 'PR #103 merged. Done with issue #102.',
       },
     ],
     sessionEnd: { detail: 'inactivity', afterMin: 130 },
@@ -139,8 +139,8 @@ const SCENARIOS: Scenario[] = [
   {
     daysAgo: 22,
     hour: 10,
-    issueNumber: 10,
-    prNumber: 11,
+    issueNumber: 104,
+    prNumber: 105,
     author: AUTHORS.marco,
     title: 'Alerts & Reports: cron validation accepts invalid day-of-week values',
     body: 'The report schedule form lets me submit `0 9 * * 8`, which is then rejected by the scheduler at runtime with a stack trace in the worker logs. The form should reject it up front.',
@@ -159,12 +159,12 @@ const SCENARIOS: Scenario[] = [
       {
         from: 'devin',
         afterMin: 18,
-        text: 'PR: https://github.com/declan-cognition-takehome/superset/pull/11. `validate_crontab` in `superset/reports/schemas.py` used croniter with `day_or=True`, which silently accepts 8. Switched to strict range validation and surfaced the error in the modal. Added pytest cases for `8` and `-1`.',
+        text: 'PR: https://github.com/declan-cognition-takehome/superset/pull/105. `validate_crontab` in `superset/reports/schemas.py` used croniter with `day_or=True`, which silently accepts 8. Switched to strict range validation and surfaced the error in the modal. Added pytest cases for `8` and `-1`.',
       },
       {
         from: 'devin',
         afterMin: 262,
-        text: 'PR #11 merged; issue #10 is complete.',
+        text: 'PR #105 merged; issue #104 is complete.',
       },
     ],
     sessionEnd: { detail: 'inactivity', afterMin: 300 },
@@ -173,7 +173,7 @@ const SCENARIOS: Scenario[] = [
   {
     daysAgo: 21,
     hour: 16,
-    issueNumber: 12,
+    issueNumber: 106,
     author: AUTHORS.akira,
     title: 'Dashboard native filters lose state when switching tabs',
     body: 'On a dashboard with tabs, applying a native filter then switching tabs resets the filter to its default value. Reproduces on 4.1.x with the default filter bar orientation.',
@@ -206,8 +206,8 @@ const SCENARIOS: Scenario[] = [
   {
     daysAgo: 20,
     hour: 11,
-    issueNumber: 13,
-    prNumber: 14,
+    issueNumber: 107,
+    prNumber: 108,
     author: AUTHORS.sarah,
     title: 'Explore: time comparison "1 year ago" ignores custom fiscal calendar offset',
     body: 'With `TIME_GRAIN_ADDONS` configured for a fiscal year starting in April, the "1 year ago" time comparison in Explore still shifts by a calendar year. The advanced analytics panel documents that the offset should follow the configured grain.',
@@ -231,12 +231,12 @@ const SCENARIOS: Scenario[] = [
       {
         from: 'devin',
         afterMin: 44,
-        text: 'Opened https://github.com/declan-cognition-takehome/superset/pull/14. Added a regression test in `tests/unit_tests/common/test_time_range_utils.py` using a fiscal April start. `pytest tests/unit_tests/common` passes.',
+        text: 'Opened https://github.com/declan-cognition-takehome/superset/pull/108. Added a regression test in `tests/unit_tests/common/test_time_range_utils.py` using a fiscal April start. `pytest tests/unit_tests/common` passes.',
       },
       {
         from: 'devin',
         afterMin: 1452,
-        text: 'PR #14 merged after review changes were applied. Issue #13 done.',
+        text: 'PR #108 merged after review changes were applied. Issue #107 done.',
       },
     ],
     sessionEnd: { detail: 'inactivity', afterMin: 1490 },
@@ -245,8 +245,8 @@ const SCENARIOS: Scenario[] = [
   {
     daysAgo: 19,
     hour: 9,
-    issueNumber: 15,
-    prNumber: 16,
+    issueNumber: 109,
+    prNumber: 110,
     author: AUTHORS.jas,
     title: 'CSV upload fails with UnicodeDecodeError for UTF-16 files',
     body: "Uploading a UTF-16 encoded CSV via Data > Upload CSV throws `UnicodeDecodeError: 'utf-8' codec can't decode byte 0xff`. The encoding dropdown offers UTF-16 but it is not honoured when sniffing the header row.",
@@ -265,12 +265,12 @@ const SCENARIOS: Scenario[] = [
       {
         from: 'devin',
         afterMin: 27,
-        text: 'PR: https://github.com/declan-cognition-takehome/superset/pull/16. `CSVReader._read_header` opened the file without the user-selected encoding, so sniffing always used UTF-8. Passed `encoding` through and added a UTF-16 fixture test. `pytest tests/unit_tests/commands/databases/csv_reader_test.py` passes.',
+        text: 'PR: https://github.com/declan-cognition-takehome/superset/pull/110. `CSVReader._read_header` opened the file without the user-selected encoding, so sniffing always used UTF-8. Passed `encoding` through and added a UTF-16 fixture test. `pytest tests/unit_tests/commands/databases/csv_reader_test.py` passes.',
       },
       {
         from: 'devin',
         afterMin: 212,
-        text: 'PR #16 merged. Issue #15 resolved.',
+        text: 'PR #110 merged. Issue #109 resolved.',
       },
     ],
     sessionEnd: { detail: 'inactivity', afterMin: 250 },
@@ -279,8 +279,8 @@ const SCENARIOS: Scenario[] = [
   {
     daysAgo: 18,
     hour: 15,
-    issueNumber: 17,
-    prNumber: 18,
+    issueNumber: 111,
+    prNumber: 112,
     author: AUTHORS.declan,
     title: 'Big Number chart: trendline tooltip shows raw epoch instead of formatted date',
     body: 'Hovering the trendline in a Big Number with Trendline chart shows `1725148800000` rather than a formatted timestamp. Other charts on the same dashboard format dates correctly.',
@@ -299,12 +299,12 @@ const SCENARIOS: Scenario[] = [
       {
         from: 'devin',
         afterMin: 15,
-        text: 'Opened https://github.com/declan-cognition-takehome/superset/pull/18 — the tooltip used the default ECharts axis formatter instead of the chart-level `xAxisFormatter`. Now shares the same formatter as the axis labels. Added a jest snapshot test for the tooltip.',
+        text: 'Opened https://github.com/declan-cognition-takehome/superset/pull/112 — the tooltip used the default ECharts axis formatter instead of the chart-level `xAxisFormatter`. Now shares the same formatter as the axis labels. Added a jest snapshot test for the tooltip.',
       },
       {
         from: 'devin',
         afterMin: 62,
-        text: 'PR #18 merged. Issue #17 done.',
+        text: 'PR #112 merged. Issue #111 done.',
       },
     ],
     sessionEnd: { detail: 'inactivity', afterMin: 100 },
@@ -313,8 +313,8 @@ const SCENARIOS: Scenario[] = [
   {
     daysAgo: 17,
     hour: 10,
-    issueNumber: 19,
-    prNumber: 20,
+    issueNumber: 113,
+    prNumber: 114,
     author: AUTHORS.marco,
     title: 'Chart list API returns 500 when filtering by owner that no longer exists',
     body: "`GET /api/v1/chart/?q=(filters:!((col:owners,opr:rel_m_m,value:9999)))` returns a 500 with `AttributeError: 'NoneType' object has no attribute 'id'` when the user id does not exist. Should be a 400 or an empty list.",
@@ -333,12 +333,12 @@ const SCENARIOS: Scenario[] = [
       {
         from: 'devin',
         afterMin: 21,
-        text: 'PR: https://github.com/declan-cognition-takehome/superset/pull/20. `ChartOwnersFilter.apply` dereferenced the user before checking for None. Now returns an always-false filter for unknown ids. Integration test added in `tests/integration_tests/charts/api_tests.py`.',
+        text: 'PR: https://github.com/declan-cognition-takehome/superset/pull/114. `ChartOwnersFilter.apply` dereferenced the user before checking for None. Now returns an always-false filter for unknown ids. Integration test added in `tests/integration_tests/charts/api_tests.py`.',
       },
       {
         from: 'devin',
         afterMin: 182,
-        text: 'PR #20 merged. Issue #19 complete.',
+        text: 'PR #114 merged. Issue #113 complete.',
       },
     ],
     sessionEnd: { detail: 'inactivity', afterMin: 220 },
@@ -347,8 +347,8 @@ const SCENARIOS: Scenario[] = [
   {
     daysAgo: 15,
     hour: 13,
-    issueNumber: 21,
-    prNumber: 22,
+    issueNumber: 115,
+    prNumber: 116,
     author: AUTHORS.akira,
     title: 'Add "Export to CSV" to SQL Lab query history',
     body: 'It would be useful to export the query history table in SQL Lab to CSV for auditing. Currently the only option is to copy rows manually.',
@@ -367,7 +367,7 @@ const SCENARIOS: Scenario[] = [
       {
         from: 'devin',
         afterMin: 52,
-        text: 'Opened https://github.com/declan-cognition-takehome/superset/pull/22 adding an "Export CSV" button to the SQL Lab query history tab, backed by the existing `/api/v1/query/export` filter set. Includes an RTL test for the button and a unit test for the CSV serializer.',
+        text: 'Opened https://github.com/declan-cognition-takehome/superset/pull/116 adding an "Export CSV" button to the SQL Lab query history tab, backed by the existing `/api/v1/query/export` filter set. Includes an RTL test for the button and a unit test for the CSV serializer.',
       },
       {
         from: 'user',
@@ -377,7 +377,7 @@ const SCENARIOS: Scenario[] = [
       {
         from: 'devin',
         afterMin: 2881,
-        text: 'Understood — PR #22 stays closed and no further changes will be made.',
+        text: 'Understood — PR #116 stays closed and no further changes will be made.',
       },
     ],
     sessionEnd: { detail: 'user_request', afterMin: 2882 },
@@ -386,8 +386,8 @@ const SCENARIOS: Scenario[] = [
   {
     daysAgo: 14,
     hour: 9,
-    issueNumber: 23,
-    prNumber: 24,
+    issueNumber: 117,
+    prNumber: 118,
     author: AUTHORS.sarah,
     title: 'Dataset editor: calculated column with a trailing semicolon breaks the whole dataset',
     body: 'Adding a calculated column whose SQL ends with `;` makes every chart on the dataset fail with a syntax error. The editor should strip the trailing semicolon or reject it with a clear message.',
@@ -406,12 +406,12 @@ const SCENARIOS: Scenario[] = [
       {
         from: 'devin',
         afterMin: 19,
-        text: 'PR: https://github.com/declan-cognition-takehome/superset/pull/24. Trailing semicolons are stripped in `validate_python_date_format`-adjacent column validation and the editor shows an inline warning. Added a unit test for `;`, `; ` and `;;` suffixes.',
+        text: 'PR: https://github.com/declan-cognition-takehome/superset/pull/118. Trailing semicolons are stripped in `validate_python_date_format`-adjacent column validation and the editor shows an inline warning. Added a unit test for `;`, `; ` and `;;` suffixes.',
       },
       {
         from: 'devin',
         afterMin: 77,
-        text: 'PR #24 merged. Issue #23 resolved.',
+        text: 'PR #118 merged. Issue #117 resolved.',
       },
     ],
     sessionEnd: { detail: 'inactivity', afterMin: 115 },
@@ -420,8 +420,8 @@ const SCENARIOS: Scenario[] = [
   {
     daysAgo: 13,
     hour: 11,
-    issueNumber: 25,
-    prNumber: 26,
+    issueNumber: 119,
+    prNumber: 120,
     author: AUTHORS.jas,
     title: 'Row-level security: rule with empty clause is saved and denies all access',
     body: 'Creating an RLS rule and leaving the clause blank saves successfully, after which every query on the affected table returns 0 rows. The form should require a non-empty clause.',
@@ -440,12 +440,12 @@ const SCENARIOS: Scenario[] = [
       {
         from: 'devin',
         afterMin: 16,
-        text: 'Opened https://github.com/declan-cognition-takehome/superset/pull/26. Added a `validate.Length(min=1)` on `clause` in both the POST and PUT schemas and a required-field marker in the modal. API tests cover the 400 response.',
+        text: 'Opened https://github.com/declan-cognition-takehome/superset/pull/120. Added a `validate.Length(min=1)` on `clause` in both the POST and PUT schemas and a required-field marker in the modal. API tests cover the 400 response.',
       },
       {
         from: 'devin',
         afterMin: 342,
-        text: 'PR #26 merged. Issue #25 complete.',
+        text: 'PR #120 merged. Issue #119 complete.',
       },
     ],
     sessionEnd: { detail: 'inactivity', afterMin: 380 },
@@ -454,8 +454,8 @@ const SCENARIOS: Scenario[] = [
   {
     daysAgo: 12,
     hour: 16,
-    issueNumber: 27,
-    prNumber: 28,
+    issueNumber: 121,
+    prNumber: 122,
     author: AUTHORS.declan,
     title: 'Dashboard export omits native filter default values',
     body: 'Exporting a dashboard and importing it into another instance loses the default values configured on native filters. The `metadata.native_filter_configuration` in the exported YAML has `defaultDataMask` set to null.',
@@ -479,12 +479,12 @@ const SCENARIOS: Scenario[] = [
       {
         from: 'devin',
         afterMin: 38,
-        text: 'PR: https://github.com/declan-cognition-takehome/superset/pull/28. Export retains `defaultDataMask`, import round-trips it. Added an export/import round-trip test in `tests/integration_tests/dashboards/commands_tests.py`.',
+        text: 'PR: https://github.com/declan-cognition-takehome/superset/pull/122. Export retains `defaultDataMask`, import round-trips it. Added an export/import round-trip test in `tests/integration_tests/dashboards/commands_tests.py`.',
       },
       {
         from: 'devin',
         afterMin: 422,
-        text: 'PR #28 merged. Issue #27 resolved.',
+        text: 'PR #122 merged. Issue #121 resolved.',
       },
     ],
     sessionEnd: { detail: 'inactivity', afterMin: 460 },
@@ -493,8 +493,8 @@ const SCENARIOS: Scenario[] = [
   {
     daysAgo: 11,
     hour: 10,
-    issueNumber: 29,
-    prNumber: 30,
+    issueNumber: 123,
+    prNumber: 124,
     author: AUTHORS.marco,
     title: 'Table chart: server pagination breaks when a column name contains a dot',
     body: 'With server-side pagination enabled, sorting by a column like `user.email` triggers a 400 because the orderby is parsed as a nested field. Client-side pagination works fine.',
@@ -513,12 +513,12 @@ const SCENARIOS: Scenario[] = [
       {
         from: 'devin',
         afterMin: 29,
-        text: 'Opened https://github.com/declan-cognition-takehome/superset/pull/30. `buildQuery` in the table plugin split orderby on `.`; it now passes the column through as an opaque label. Added a jest case for `user.email`.',
+        text: 'Opened https://github.com/declan-cognition-takehome/superset/pull/124. `buildQuery` in the table plugin split orderby on `.`; it now passes the column through as an opaque label. Added a jest case for `user.email`.',
       },
       {
         from: 'devin',
         afterMin: 152,
-        text: 'PR #30 merged. Issue #29 complete.',
+        text: 'PR #124 merged. Issue #123 complete.',
       },
     ],
     sessionEnd: { detail: 'inactivity', afterMin: 190 },
@@ -527,7 +527,7 @@ const SCENARIOS: Scenario[] = [
   {
     daysAgo: 10,
     hour: 14,
-    issueNumber: 31,
+    issueNumber: 125,
     author: AUTHORS.akira,
     title: 'Flaky test: test_chart_data_async_results_type intermittently fails on CI',
     body: '`tests/integration_tests/charts/data/api_tests.py::test_chart_data_async_results_type` fails roughly 1 in 10 CI runs with a cache miss. Probably a race with the async query worker.',
@@ -555,8 +555,8 @@ const SCENARIOS: Scenario[] = [
   {
     daysAgo: 9,
     hour: 9,
-    issueNumber: 32,
-    prNumber: 33,
+    issueNumber: 126,
+    prNumber: 127,
     author: AUTHORS.sarah,
     title: 'Annotation layers: interval annotations render one day short',
     body: 'Interval annotations on a line chart end one day before the configured end date. Looks like an inclusive/exclusive mismatch when converting the end timestamp.',
@@ -575,12 +575,12 @@ const SCENARIOS: Scenario[] = [
       {
         from: 'devin',
         afterMin: 24,
-        text: 'Opened https://github.com/declan-cognition-takehome/superset/pull/33. `extractAnnotationIntervals` used the end timestamp at midnight; it now uses end-of-day so the final day is included. Jest coverage added for single-day and multi-day intervals.',
+        text: 'Opened https://github.com/declan-cognition-takehome/superset/pull/127. `extractAnnotationIntervals` used the end timestamp at midnight; it now uses end-of-day so the final day is included. Jest coverage added for single-day and multi-day intervals.',
       },
       {
         from: 'devin',
         afterMin: 107,
-        text: 'PR #33 merged. Issue #32 resolved.',
+        text: 'PR #127 merged. Issue #126 resolved.',
       },
     ],
     sessionEnd: { detail: 'inactivity', afterMin: 145 },
@@ -589,8 +589,8 @@ const SCENARIOS: Scenario[] = [
   {
     daysAgo: 8,
     hour: 12,
-    issueNumber: 34,
-    prNumber: 35,
+    issueNumber: 128,
+    prNumber: 129,
     author: AUTHORS.jas,
     title: 'Database connection modal: SSH tunnel fields persist after toggling off',
     body: 'Enabling SSH tunnel, filling in the host, then disabling the toggle still sends `ssh_tunnel` in the payload, which fails validation with "ssh_tunnel.server_address is required" once the fields are cleared.',
@@ -609,12 +609,12 @@ const SCENARIOS: Scenario[] = [
       {
         from: 'devin',
         afterMin: 20,
-        text: 'PR: https://github.com/declan-cognition-takehome/superset/pull/35. The reducer kept `ssh_tunnel` when the toggle went off; now clears it. Added an RTL test toggling on/off and asserting the payload.',
+        text: 'PR: https://github.com/declan-cognition-takehome/superset/pull/129. The reducer kept `ssh_tunnel` when the toggle went off; now clears it. Added an RTL test toggling on/off and asserting the payload.',
       },
       {
         from: 'devin',
         afterMin: 87,
-        text: 'PR #35 merged. Issue #34 done.',
+        text: 'PR #129 merged. Issue #128 done.',
       },
     ],
     sessionEnd: { detail: 'inactivity', afterMin: 125 },
@@ -623,8 +623,8 @@ const SCENARIOS: Scenario[] = [
   {
     daysAgo: 7,
     hour: 15,
-    issueNumber: 36,
-    prNumber: 37,
+    issueNumber: 130,
+    prNumber: 131,
     author: AUTHORS.declan,
     title: 'Thumbnails: dashboard screenshot job crashes on dashboards with more than 50 charts',
     body: 'The `cache_dashboard_thumbnail` Celery task times out and leaves a zombie Chrome process for large dashboards. Smaller dashboards are fine. Worker logs show `TimeoutException` from selenium.',
@@ -648,12 +648,12 @@ const SCENARIOS: Scenario[] = [
       {
         from: 'devin',
         afterMin: 47,
-        text: 'Opened https://github.com/declan-cognition-takehome/superset/pull/37. Wait time now scales with chart count (capped by `SCREENSHOT_MAX_WAIT`), and driver teardown moved into a `finally`. Unit tests mock the driver to assert `quit()` runs on timeout.',
+        text: 'Opened https://github.com/declan-cognition-takehome/superset/pull/131. Wait time now scales with chart count (capped by `SCREENSHOT_MAX_WAIT`), and driver teardown moved into a `finally`. Unit tests mock the driver to assert `quit()` runs on timeout.',
       },
       {
         from: 'devin',
         afterMin: 602,
-        text: 'PR #37 merged. Issue #36 resolved.',
+        text: 'PR #131 merged. Issue #130 resolved.',
       },
     ],
     sessionEnd: { detail: 'inactivity', afterMin: 640 },
@@ -662,8 +662,8 @@ const SCENARIOS: Scenario[] = [
   {
     daysAgo: 5,
     hour: 10,
-    issueNumber: 38,
-    prNumber: 39,
+    issueNumber: 132,
+    prNumber: 133,
     author: AUTHORS.marco,
     title: 'Tags: deleting a tag leaves orphaned rows in tagged_object',
     body: 'After deleting a tag through the API the `tagged_object` rows referencing it remain, and the tag list view then errors with a foreign key lookup failure.',
@@ -682,12 +682,12 @@ const SCENARIOS: Scenario[] = [
       {
         from: 'devin',
         afterMin: 22,
-        text: 'PR: https://github.com/declan-cognition-takehome/superset/pull/39. Added `cascade="all, delete-orphan"` on `Tag.objects` and an explicit cleanup in the delete command for databases without FK enforcement. Integration test verifies no orphans remain.',
+        text: 'PR: https://github.com/declan-cognition-takehome/superset/pull/133. Added `cascade="all, delete-orphan"` on `Tag.objects` and an explicit cleanup in the delete command for databases without FK enforcement. Integration test verifies no orphans remain.',
       },
       {
         from: 'devin',
         afterMin: 132,
-        text: 'PR #39 merged. Issue #38 complete.',
+        text: 'PR #133 merged. Issue #132 complete.',
       },
     ],
     sessionEnd: { detail: 'inactivity', afterMin: 170 },
@@ -696,8 +696,8 @@ const SCENARIOS: Scenario[] = [
   {
     daysAgo: 4,
     hour: 13,
-    issueNumber: 40,
-    prNumber: 41,
+    issueNumber: 134,
+    prNumber: 135,
     author: AUTHORS.sarah,
     title: 'Explore: "Copy to clipboard" for chart URL copies the pre-save permalink',
     body: 'After changing a chart and saving, the Share > Copy permalink action copies the permalink generated before the save, pointing at stale form data.',
@@ -716,12 +716,12 @@ const SCENARIOS: Scenario[] = [
       {
         from: 'devin',
         afterMin: 17,
-        text: 'Opened https://github.com/declan-cognition-takehome/superset/pull/41. The permalink `useMemo` did not depend on `sliceId`/`formData` changes after save. Invalidated on save and added an RTL test.',
+        text: 'Opened https://github.com/declan-cognition-takehome/superset/pull/135. The permalink `useMemo` did not depend on `sliceId`/`formData` changes after save. Invalidated on save and added an RTL test.',
       },
       {
         from: 'devin',
         afterMin: 72,
-        text: 'PR #41 merged. Issue #40 done.',
+        text: 'PR #135 merged. Issue #134 done.',
       },
     ],
     sessionEnd: { detail: 'inactivity', afterMin: 110 },
@@ -730,8 +730,8 @@ const SCENARIOS: Scenario[] = [
   {
     daysAgo: 2,
     hour: 11,
-    issueNumber: 44,
-    prNumber: 45,
+    issueNumber: 138,
+    prNumber: 139,
     author: AUTHORS.declan,
     title: 'Import dashboard fails when a chart references a dataset with a renamed schema',
     body: 'Importing a dashboard export from staging into production fails with `Dataset not found` because the schema was renamed between environments, even though the `schema` override is set in the import modal.',
@@ -750,12 +750,12 @@ const SCENARIOS: Scenario[] = [
       {
         from: 'devin',
         afterMin: 35,
-        text: 'Opened https://github.com/declan-cognition-takehome/superset/pull/45. Chart → dataset lookup now uses the overridden schema before falling back to the exported one. Added a round-trip import test with a schema override.',
+        text: 'Opened https://github.com/declan-cognition-takehome/superset/pull/139. Chart → dataset lookup now uses the overridden schema before falling back to the exported one. Added a round-trip import test with a schema override.',
       },
       {
         from: 'devin',
         afterMin: 242,
-        text: 'PR #45 merged. Issue #44 complete.',
+        text: 'PR #139 merged. Issue #138 complete.',
       },
     ],
     sessionEnd: { detail: 'inactivity', afterMin: 280 },
