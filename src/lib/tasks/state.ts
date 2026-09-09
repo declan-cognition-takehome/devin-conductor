@@ -6,6 +6,7 @@ export interface StateInputs {
   hasMergedPr: boolean;
   hasClosedUnmergedPr: boolean;
   devinStatus?: string | null;
+  devinStatusDetail?: string | null;
   dispatchExhausted?: boolean;
   anomaly?: boolean;
 }
@@ -20,6 +21,16 @@ const TERMINAL_DEVIN_STATUSES = new Set(['exit', 'error', 'suspended', 'expired'
 
 export function isTerminalDevinStatus(status: string | null | undefined): boolean {
   return status ? TERMINAL_DEVIN_STATUSES.has(status.toLowerCase()) : false;
+}
+
+/**
+ * Devin keeps a session `running` while it waits on a human reply, so the detail field is the
+ * only signal that the session has stopped making progress on its own.
+ */
+const AWAITING_INPUT_DETAILS = new Set(['waiting_for_user', 'waiting_for_input', 'blocked']);
+
+export function isAwaitingInputDetail(detail: string | null | undefined): boolean {
+  return detail ? AWAITING_INPUT_DETAILS.has(detail.toLowerCase()) : false;
 }
 
 /**
@@ -53,6 +64,9 @@ export function mapUiState(input: StateInputs): MappedState {
   if (devinStatus === 'expired') {
     return { uiState: 'needs_attention', secondaryOutcome: 'externally_cancelled' };
   }
+  if (isAwaitingInputDetail(input.devinStatusDetail)) {
+    return { uiState: 'needs_attention', secondaryOutcome: 'awaiting_input' };
+  }
   if (devinStatus === 'exit' || input.internalState === 'session_terminal') {
     return {
       uiState: 'needs_attention',
@@ -81,5 +95,6 @@ export const SECONDARY_OUTCOME_LABELS: Record<SecondaryOutcome, string> = {
   dispatch_exhausted: 'Dispatch retries exhausted',
   devin_error: 'Devin session errored',
   devin_suspended: 'Devin session suspended',
+  awaiting_input: 'Waiting on a human reply',
   anomaly: 'Anomaly — needs review',
 };
