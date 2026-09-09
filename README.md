@@ -22,8 +22,8 @@ Three pages:
 
 ```
 GitHub  ──webhook──▶  /api/github/webhook  ──▶  webhook_deliveries  ──▶  jobs (SQLite queue)
-                        (HMAC verified,                                      │
-                         2 MiB cap, dedup)                                   ▼
+                                                                             │
+                                                                             ▼
                                                               in-process worker loop
                                                     process_delivery → dispatch → reconcile
                                                                  │          │        │
