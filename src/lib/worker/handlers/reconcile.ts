@@ -14,9 +14,11 @@ import {
 } from '../../db/store';
 import { enqueueJob } from '../../queue/jobs';
 import { devinClient } from '../../devin/client';
+import type { DevinSession } from '../../devin/client';
+import type { AttemptRow } from '../../db/types';
 import { parsePullRequestUrl } from '../../github/events';
 import { isAwaitingInputDetail, isTerminalDevinStatus } from '../../tasks/state';
-import { redact } from '../../redact';
+import { redact, safeErrorSummary } from '../../redact';
 
 const MAX_MESSAGE_CHARS = 8_000;
 
@@ -40,8 +42,7 @@ export async function reconcileAttempt(attemptId: string): Promise<void> {
   updateAttempt(attemptId, {
     raw_status: session.status,
     status_detail: session.status_detail ?? null,
-    // The latest snapshot replaces the previous value, so repeated polls cannot inflate ACUs.
-    acus: session.acus_consumed ?? attempt.acus,
+    acus: await resolveAcus(attempt, session),
     status: terminal ? 'terminal' : 'running',
     last_reconciled_at: now,
     terminal_at: terminal ? (attempt.terminal_at ?? now) : null,
@@ -137,6 +138,31 @@ export async function reconcileAttempt(attemptId: string): Promise<void> {
   enqueueJob({ jobType: 'sync_comment', entityId: task.id, dedupeKey: `comment:${task.id}` });
   // The next poll is scheduled by the worker after this job completes: while the job is still
   // claimed it holds `reconcile:<attemptId>`, and the dedupe index would drop the insert.
+}
+
+/**
+ * ACUs come from two places: the session payload, which reports 0 until metering catches up,
+ * and the consumption endpoint, which settles afterwards. Both report the session total rather
+ * than a delta, so keeping the largest figure seen neither inflates the total on repeated polls
+ * nor lets a late zero erase a recorded one. A zero is treated as "not metered yet" so the
+ * report can distinguish unknown usage from genuinely free work.
+ */
+async function resolveAcus(attempt: AttemptRow, session: DevinSession): Promise<number | null> {
+  const candidates = [attempt.acus ?? 0, session.acus_consumed ?? 0];
+  if (candidates.every((value) => value <= 0)) {
+    try {
+      const { totalAcus } = await devinClient().getSessionConsumption(session.session_id);
+      if (totalAcus !== null) candidates.push(totalAcus);
+    } catch (error) {
+      // Consumption is reporting-only: a failure must not stall reconciliation.
+      logger.warn('devin consumption lookup failed', {
+        attemptId: attempt.id,
+        error: safeErrorSummary(error),
+      });
+    }
+  }
+  const highest = Math.max(...candidates);
+  return highest > 0 ? highest : null;
 }
 
 /** Pulls only messages newer than the stored cursor and deduplicates by Devin event ID. */

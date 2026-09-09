@@ -12,6 +12,7 @@ const patchSchema = z
     paused: z.boolean().optional(),
     maxConcurrentSessions: z.number().int().min(1).max(20).optional(),
     maxAcuLimit: z.number().int().min(1).max(1000).nullable().optional(),
+    acuRateUsd: z.number().min(0).max(1000).nullable().optional(),
     pollIntervalSeconds: z.number().int().min(10).max(3600).optional(),
     maxRetryAttempts: z.number().int().min(1).max(10).optional(),
   })

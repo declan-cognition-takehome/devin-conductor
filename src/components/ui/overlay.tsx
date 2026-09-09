@@ -49,6 +49,7 @@ export function Menu({
   label,
   children,
   align = 'end',
+  side = 'bottom',
   className,
 }: {
   trigger: (props: {
@@ -59,6 +60,8 @@ export function Menu({
   label: string;
   children: (close: () => void) => React.ReactNode;
   align?: 'start' | 'end';
+  /** `top` opens the panel above the trigger, for triggers near the bottom of the viewport. */
+  side?: 'top' | 'bottom';
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
@@ -92,8 +95,9 @@ export function Menu({
           role="menu"
           aria-label={label}
           className={clsx(
-            'absolute z-40 mt-1 min-w-44 rounded-[8px] border border-border-strong bg-surface-raised p-1 shadow-[var(--shadow-overlay)]',
+            'absolute z-40 min-w-44 rounded-[8px] border border-border-strong bg-surface-raised p-1 shadow-[var(--shadow-overlay)]',
             align === 'end' ? 'right-0' : 'left-0',
+            side === 'top' ? 'bottom-full mb-1' : 'top-full mt-1',
           )}
         >
           {children(() => setOpen(false))}

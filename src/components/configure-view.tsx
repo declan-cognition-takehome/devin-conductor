@@ -220,6 +220,23 @@ export function ConfigureView() {
                 }
               />
               <NumberField
+                label="ACU rate"
+                hint="Your contracted dollar price per ACU. Empty means costs stay unpriced in the report."
+                value={settings.acu_rate_usd}
+                min={0}
+                max={1000}
+                step={0.01}
+                unit="USD / ACU"
+                nullable
+                disabled={settingsBusy}
+                onCommit={(value) =>
+                  void run('settings', async () => {
+                    await patchJson('/api/settings', { acuRateUsd: value });
+                    return null;
+                  })
+                }
+              />
+              <NumberField
                 label="Session poll interval"
                 hint="How often the worker reconciles a running Devin session."
                 value={settings.poll_interval_seconds}

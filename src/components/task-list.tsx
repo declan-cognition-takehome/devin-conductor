@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { ExternalLink, GitPullRequestArrow, MoreHorizontal, SearchX } from 'lucide-react';
+import { ExternalLink, GitPullRequestArrow, ListTodo, MoreHorizontal, SearchX } from 'lucide-react';
 import clsx from 'clsx';
 import type { TaskListItem } from '@/lib/db/store';
 import type { UiState } from '@/lib/db/types';
@@ -110,7 +110,8 @@ export function TaskList({ banner }: { banner?: React.ReactNode }) {
     <div className="space-y-4">
       <PageHeader
         title="Issues"
-        description="Every GitHub issue Conductor has seen, and what Devin did with it."
+        icon={ListTodo}
+        description="Track the issues Conductor is orchestrating."
         actions={
           <SearchField
             label="Search issues"

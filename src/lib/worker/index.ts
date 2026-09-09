@@ -25,7 +25,7 @@ import { DispatchDeferred, dispatchTask } from './handlers/dispatch';
 import { reconcileAttempt } from './handlers/reconcile';
 import { syncComment } from './handlers/sync-comment';
 import { reconcilePullRequest } from './handlers/pull-request';
-import type { JobRow } from '../db/types';
+import type { AttemptRow, JobRow } from '../db/types';
 
 const IDLE_DELAY_MS = 1_000;
 const SWEEP_INTERVAL_MS = 60_000;
@@ -133,6 +133,15 @@ export class Worker {
   }
 }
 
+/** Devin meters ACUs after a session ends, so a terminal attempt is polled a while longer. */
+const ACU_SETTLE_WINDOW_MS = 10 * 60_000;
+
+function withinAcuSettleWindow(attempt: AttemptRow): boolean {
+  if (attempt.acus !== null) return false;
+  const terminalAt = attempt.terminal_at ?? attempt.last_reconciled_at;
+  return terminalAt !== null && Date.now() - terminalAt < ACU_SETTLE_WINDOW_MS;
+}
+
 /**
  * Polling continues from here rather than from inside the handler: a running job still holds
  * its dedupe key, so a self-scheduled follow-up would be silently dropped by the dedupe index.
@@ -140,7 +149,8 @@ export class Worker {
 function scheduleNextPoll(job: JobRow): void {
   if (job.job_type !== 'reconcile_attempt') return;
   const attempt = getAttempt(job.entity_id);
-  if (!attempt || attempt.status === 'terminal') return;
+  if (!attempt) return;
+  if (attempt.status === 'terminal' && !withinAcuSettleWindow(attempt)) return;
   enqueueJob({
     jobType: 'reconcile_attempt',
     entityId: attempt.id,

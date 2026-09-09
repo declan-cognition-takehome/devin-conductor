@@ -2,6 +2,20 @@ export function formatPercent(value: number | null): string {
   return value === null ? '—' : `${Math.round(value * 100)}%`;
 }
 
+export function formatAcus(value: number | null): string {
+  if (value === null) return '—';
+  return value >= 100 ? String(Math.round(value)) : value.toFixed(1);
+}
+
+export function formatUsd(value: number | null): string {
+  if (value === null) return '—';
+  return value.toLocaleString(undefined, {
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits: value >= 100 ? 0 : 2,
+  });
+}
+
 export function formatDuration(ms: number | null): string {
   if (ms === null) return '—';
   const minutes = Math.round(ms / 60_000);

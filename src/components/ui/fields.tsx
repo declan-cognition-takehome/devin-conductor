@@ -130,6 +130,7 @@ export function NumberField({
   value,
   min,
   max,
+  step = 1,
   nullable = false,
   disabled,
   onCommit,
@@ -140,6 +141,8 @@ export function NumberField({
   value: number | null;
   min: number;
   max: number;
+  /** A step below 1 accepts decimals; the default keeps the field whole-number only. */
+  step?: number;
   nullable?: boolean;
   disabled?: boolean;
   onCommit: (value: number | null) => void;
@@ -158,6 +161,11 @@ export function NumberField({
     setDraft(value === null ? '' : String(value));
   }
 
+  const decimals = step < 1;
+  const requirement = decimals
+    ? `Enter a number between ${min} and ${max}.`
+    : `Enter a whole number between ${min} and ${max}.`;
+
   function commit() {
     if (draft.trim() === '') {
       if (nullable) {
@@ -165,13 +173,14 @@ export function NumberField({
         if (value !== null) onCommit(null);
         return;
       }
-      setInvalid(`Enter a whole number between ${min} and ${max}.`);
+      setInvalid(requirement);
       reset();
       return;
     }
     const parsed = Number(draft);
-    if (!Number.isInteger(parsed) || parsed < min || parsed > max) {
-      setInvalid(`Enter a whole number between ${min} and ${max}.`);
+    const wellFormed = decimals ? Number.isFinite(parsed) : Number.isInteger(parsed);
+    if (!wellFormed || parsed < min || parsed > max) {
+      setInvalid(requirement);
       reset();
       return;
     }
@@ -200,9 +209,10 @@ export function NumberField({
         <TextInput
           id={id}
           type="number"
-          inputMode="numeric"
+          inputMode={decimals ? 'decimal' : 'numeric'}
           min={min}
           max={max}
+          step={step}
           value={draft}
           disabled={disabled}
           invalid={invalid !== null}

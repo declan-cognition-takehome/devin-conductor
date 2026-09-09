@@ -208,6 +208,7 @@ export interface SettingsRow {
   paused: number;
   max_concurrent_sessions: number;
   max_acu_limit: number | null;
+  acu_rate_usd: number | null;
   poll_interval_seconds: number;
   max_retry_attempts: number;
   last_devin_contact_at: number | null;

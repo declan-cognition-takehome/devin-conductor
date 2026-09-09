@@ -1,4 +1,5 @@
 import { db } from './db';
+import { getSettings } from './db/store';
 
 /**
  * Every figure here is computed from persisted rows. Ratios return null when the
@@ -21,7 +22,11 @@ export interface Kpis {
   prRate: number | null;
   mergeRate: number | null;
   needsAttention: number;
-  totalAcus: number;
+  /** Null when no session has reported metered usage yet, so the UI can say "unknown". */
+  totalAcus: number | null;
+  acuRateUsd: number | null;
+  totalCostUsd: number | null;
+  medianPrCostUsd: number | null;
   medianTimeToPrMs: number | null;
   medianTimeToFirstDispatchMs: number | null;
 }
@@ -39,7 +44,8 @@ export interface RepositoryStat {
   prs: number;
   merged: number;
   needsAttention: number;
-  acus: number;
+  acus: number | null;
+  costUsd: number | null;
 }
 
 export interface AuthorStat {
@@ -48,9 +54,13 @@ export interface AuthorStat {
   merged: number;
 }
 
-export interface FailureStat {
-  reason: string;
-  count: number;
+export interface PullRequestCost {
+  url: string;
+  repositoryFullName: string;
+  number: number;
+  merged: boolean;
+  acus: number | null;
+  costUsd: number | null;
 }
 
 export interface MetricsSnapshot {
@@ -59,7 +69,7 @@ export interface MetricsSnapshot {
   daily: DailyPoint[];
   repositories: RepositoryStat[];
   authors: AuthorStat[];
-  failures: FailureStat[];
+  pullRequestCosts: PullRequestCost[];
   windowDays: number;
   generatedAt: number;
 }
@@ -121,6 +131,10 @@ export function collectMetrics(windowDays = 30): MetricsSnapshot {
       'SELECT SUM(acus) AS total FROM devin_session_attempts WHERE created_at >= ?',
     )
     .get(since);
+  const totalAcus = acuRow?.total ?? null;
+  const acuRateUsd = getSettings().acu_rate_usd;
+  const cost = (acus: number | null): number | null =>
+    acus === null || acuRateUsd === null ? null : acus * acuRateUsd;
 
   const timeToPr = conn
     .prepare<[number], { ms: number }>(
@@ -152,17 +166,18 @@ export function collectMetrics(windowDays = 30): MetricsSnapshot {
     .all(since);
 
   const repositories = conn
-    .prepare<[number], RepositoryStat>(
+    .prepare<[number], Omit<RepositoryStat, 'costUsd'>>(
       `SELECT t.repository_full_name AS repositoryFullName,
               COUNT(*) AS tasks,
               SUM(CASE WHEN t.first_pr_at IS NOT NULL THEN 1 ELSE 0 END) AS prs,
               SUM(CASE WHEN t.ui_state = 'merged' THEN 1 ELSE 0 END) AS merged,
               SUM(CASE WHEN t.ui_state = 'needs_attention' THEN 1 ELSE 0 END) AS needsAttention,
-              COALESCE((SELECT SUM(a.acus) FROM devin_session_attempts a WHERE a.task_id = t.id), 0) AS acus
+              (SELECT SUM(a.acus) FROM devin_session_attempts a WHERE a.task_id = t.id) AS acus
        FROM tasks t WHERE t.created_at >= ?
        GROUP BY t.repository_full_name ORDER BY tasks DESC`,
     )
-    .all(since);
+    .all(since)
+    .map((repo) => ({ ...repo, costUsd: cost(repo.acus) }));
 
   const authors = conn
     .prepare<[number], AuthorStat>(
@@ -174,14 +189,40 @@ export function collectMetrics(windowDays = 30): MetricsSnapshot {
     )
     .all(since);
 
-  const failures = conn
-    .prepare<[number], FailureStat>(
-      `SELECT COALESCE(secondary_outcome, 'unclassified') AS reason, COUNT(*) AS count
-       FROM tasks
-       WHERE created_at >= ? AND ui_state = 'needs_attention'
-       GROUP BY reason ORDER BY count DESC`,
+  /**
+   * A pull request costs a share of its session: one session can open several, and only the
+   * session is metered, so its ACUs are divided evenly across the PRs it produced.
+   */
+  const pullRequestCosts: PullRequestCost[] = conn
+    .prepare<
+      [number],
+      {
+        url: string;
+        repositoryFullName: string;
+        number: number;
+        merged: number;
+        acus: number | null;
+      }
+    >(
+      `SELECT p.url AS url,
+              p.repository_full_name AS repositoryFullName,
+              p.number AS number,
+              p.merged AS merged,
+              (SELECT a.acus * 1.0 / (SELECT COUNT(*) FROM pull_requests s WHERE s.attempt_id = p.attempt_id)
+               FROM devin_session_attempts a WHERE a.id = p.attempt_id) AS acus
+       FROM pull_requests p
+       WHERE p.created_at >= ? AND p.task_id IS NOT NULL
+       ORDER BY p.created_at DESC`,
     )
-    .all(since);
+    .all(since)
+    .map((row) => ({
+      url: row.url,
+      repositoryFullName: row.repositoryFullName,
+      number: row.number,
+      merged: row.merged === 1,
+      acus: row.acus,
+      costUsd: cost(row.acus),
+    }));
 
   return {
     funnel: {
@@ -199,14 +240,19 @@ export function collectMetrics(windowDays = 30): MetricsSnapshot {
       prRate: ratio(prsOpened, dispatched),
       mergeRate: ratio(prsMerged, prsOpened),
       needsAttention: counts?.needs_attention ?? 0,
-      totalAcus: acuRow?.total ?? 0,
+      totalAcus,
+      acuRateUsd,
+      totalCostUsd: cost(totalAcus),
+      medianPrCostUsd: median(
+        pullRequestCosts.map((pr) => pr.costUsd).filter((value): value is number => value !== null),
+      ),
       medianTimeToPrMs: median(timeToPr),
       medianTimeToFirstDispatchMs: median(timeToDispatch),
     },
     daily,
     repositories,
     authors,
-    failures,
+    pullRequestCosts,
     windowDays,
     generatedAt: Date.now(),
   };

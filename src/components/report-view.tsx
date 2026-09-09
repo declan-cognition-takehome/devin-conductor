@@ -1,16 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Legend,
-  ResponsiveContainer,
-  Tooltip as ChartTooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
+import { BarChart3 } from 'lucide-react';
+import { Cell, Funnel, FunnelChart, LabelList, ResponsiveContainer } from 'recharts';
 import type { MetricsSnapshot } from '@/lib/metrics';
 import { getJson } from '@/lib/client/api';
 import {
@@ -21,9 +13,16 @@ import {
   Section,
   Segmented,
   Skeleton,
+  StatusDot,
+  formatAcus,
   formatDuration,
   formatPercent,
+  formatRelative,
+  formatUsd,
 } from './ui';
+
+/** The report refreshes on its own so an open tab keeps showing current system state. */
+const POLL_MS = 15_000;
 
 const WINDOWS = [
   { value: '7', label: '7 days' },
@@ -33,25 +32,22 @@ const WINDOWS = [
 
 /** Chart colours are read from the same palette as the rest of the interface. */
 const CHART = {
-  grid: '#20242b',
   axis: '#6d7684',
-  surface: '#1d222a',
-  border: '#333a45',
   ink: '#e7eaee',
-  tasks: '#5b93f5',
-  prs: '#5fa97a',
-  merges: '#d9a13f',
+  stages: ['#3f6dc4', '#4f86e0', '#5b93f5', '#5fa97a', '#d9a13f'],
 };
 
 export function ReportView() {
   const [days, setDays] = useState('30');
   const [data, setData] = useState<MetricsSnapshot | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [refreshedAt, setRefreshedAt] = useState<number | null>(null);
 
   const load = useCallback(
     async (signal?: AbortSignal) => {
       try {
         setData(await getJson<MetricsSnapshot>(`/api/metrics?days=${days}`, signal));
+        setRefreshedAt(Date.now());
         setError(null);
       } catch (err) {
         if ((err as Error).name === 'AbortError') return;
@@ -64,13 +60,26 @@ export function ReportView() {
   useEffect(() => {
     const controller = new AbortController();
     void load(controller.signal);
-    return () => controller.abort();
+    const timer = setInterval(() => void load(), POLL_MS);
+    return () => {
+      controller.abort();
+      clearInterval(timer);
+    };
   }, [load]);
 
   const header = (
     <PageHeader
       title="Report"
+      icon={BarChart3}
       description="Computed from recorded task, session, and pull request history. Ratios show “—” when there is nothing to divide by."
+      meta={
+        <span className="inline-flex items-center gap-1.5">
+          <StatusDot tone={error ? 'critical' : 'positive'} live={!error} />
+          {error
+            ? 'Live updates interrupted'
+            : `Live · updated ${formatRelative(refreshedAt)}, refreshing every ${POLL_MS / 1000}s`}
+        </span>
+      }
       actions={
         <Segmented label="Reporting window" options={WINDOWS} value={days} onChange={setDays} />
       }
@@ -96,6 +105,13 @@ export function ReportView() {
   }
 
   const { kpis, funnel } = data;
+  const stages = [
+    { stage: 'Issues received', value: funnel.issuesReceived },
+    { stage: 'Eligible', value: funnel.tasksEligible },
+    { stage: 'Dispatched', value: funnel.sessionsDispatched },
+    { stage: 'PRs opened', value: funnel.prsOpened },
+    { stage: 'Merged', value: funnel.prsMerged },
+  ];
 
   return (
     <div className="space-y-6">
@@ -143,31 +159,59 @@ export function ReportView() {
               value={String(kpis.needsAttention)}
               className="bg-canvas"
             />
-            <Metric label="ACUs consumed" value={String(kpis.totalAcus)} className="bg-canvas" />
+            <Metric
+              label="ACUs consumed"
+              value={formatAcus(kpis.totalAcus)}
+              hint={kpis.totalAcus === null ? 'No metered usage reported yet' : undefined}
+              className="bg-canvas"
+            />
+            <Metric
+              label="Spend"
+              value={formatUsd(kpis.totalCostUsd)}
+              hint={
+                kpis.acuRateUsd === null
+                  ? 'Set an ACU rate in Configure'
+                  : `at ${formatUsd(kpis.acuRateUsd)} per ACU`
+              }
+              className="bg-canvas"
+            />
+            <Metric
+              label="Median cost per PR"
+              value={formatUsd(kpis.medianPrCostUsd)}
+              className="bg-canvas"
+            />
           </div>
 
-          <Section id="throughput" title="Daily throughput">
-            <div className="h-60 w-full">
+          <Section
+            id="throughput"
+            title="Throughput funnel"
+            description={`Issues narrowing to merged pull requests over the last ${data.windowDays} days.`}
+          >
+            <div className="h-72 w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={data.daily} margin={{ top: 4, right: 4, bottom: 0, left: -16 }}>
-                  <CartesianGrid stroke={CHART.grid} vertical={false} />
-                  <XAxis dataKey="day" stroke={CHART.axis} fontSize={11} tickLine={false} />
-                  <YAxis stroke={CHART.axis} fontSize={11} allowDecimals={false} tickLine={false} />
-                  <ChartTooltip
-                    cursor={{ fill: 'rgba(255,255,255,0.03)' }}
-                    contentStyle={{
-                      background: CHART.surface,
-                      border: `1px solid ${CHART.border}`,
-                      borderRadius: 8,
-                      color: CHART.ink,
-                      fontSize: 12,
-                    }}
-                  />
-                  <Legend wrapperStyle={{ fontSize: 12, color: CHART.axis }} />
-                  <Bar dataKey="tasks" name="Tasks" fill={CHART.tasks} radius={[2, 2, 0, 0]} />
-                  <Bar dataKey="prs" name="PRs" fill={CHART.prs} radius={[2, 2, 0, 0]} />
-                  <Bar dataKey="merges" name="Merged" fill={CHART.merges} radius={[2, 2, 0, 0]} />
-                </BarChart>
+                <FunnelChart margin={{ top: 8, right: 132, bottom: 8, left: 132 }}>
+                  <Funnel dataKey="value" data={stages} isAnimationActive={false} stroke="none">
+                    {stages.map((entry, index) => (
+                      <Cell key={entry.stage} fill={CHART.stages[index]} />
+                    ))}
+                    <LabelList
+                      dataKey="stage"
+                      position="left"
+                      offset={12}
+                      fill={CHART.axis}
+                      stroke="none"
+                      fontSize={12}
+                    />
+                    <LabelList
+                      dataKey="value"
+                      position="right"
+                      offset={12}
+                      fill={CHART.ink}
+                      stroke="none"
+                      fontSize={12}
+                    />
+                  </Funnel>
+                </FunnelChart>
               </ResponsiveContainer>
             </div>
           </Section>
@@ -183,7 +227,7 @@ export function ReportView() {
                       <th scope="col" className="py-1.5 font-normal">
                         Repository
                       </th>
-                      {['Tasks', 'PRs', 'Merged', 'ACUs'].map((column) => (
+                      {['Tasks', 'PRs', 'Merged', 'ACUs', 'Cost'].map((column) => (
                         <th key={column} scope="col" className="py-1.5 text-right font-normal">
                           {column}
                         </th>
@@ -202,7 +246,12 @@ export function ReportView() {
                         <td className="numeric py-2 text-right text-ink-muted">{repo.tasks}</td>
                         <td className="numeric py-2 text-right text-ink-muted">{repo.prs}</td>
                         <td className="numeric py-2 text-right text-ink-muted">{repo.merged}</td>
-                        <td className="numeric py-2 text-right text-ink-muted">{repo.acus}</td>
+                        <td className="numeric py-2 text-right text-ink-muted">
+                          {formatAcus(repo.acus)}
+                        </td>
+                        <td className="numeric py-2 text-right text-ink-muted">
+                          {formatUsd(repo.costUsd)}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -210,21 +259,55 @@ export function ReportView() {
               )}
             </Section>
 
-            <Section id="failures" title="Needs-attention reasons">
-              {data.failures.length === 0 ? (
-                <EmptyState compact title="Nothing needs attention in this window" />
+            <Section
+              id="pr-costs"
+              title="Pull request costs"
+              description={
+                kpis.acuRateUsd === null
+                  ? 'Set an ACU rate in Configure to price these sessions.'
+                  : 'Session ACUs are split evenly across the pull requests they produced.'
+              }
+            >
+              {data.pullRequestCosts.length === 0 ? (
+                <EmptyState compact title="No pull requests in this window" />
               ) : (
-                <ul className="divide-y divide-border-subtle text-meta">
-                  {data.failures.map((failure) => (
-                    <li
-                      key={failure.reason}
-                      className="flex items-baseline justify-between gap-4 py-2"
-                    >
-                      <span className="min-w-0 text-ink-muted">{failure.reason}</span>
-                      <span className="numeric shrink-0 text-ink">{failure.count}</span>
-                    </li>
-                  ))}
-                </ul>
+                <table className="w-full text-meta">
+                  <thead>
+                    <tr className="border-b border-border-subtle text-left text-ink-faint">
+                      <th scope="col" className="py-1.5 font-normal">
+                        Pull request
+                      </th>
+                      {['ACUs', 'Cost'].map((column) => (
+                        <th key={column} scope="col" className="py-1.5 text-right font-normal">
+                          {column}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border-subtle">
+                    {data.pullRequestCosts.map((pr) => (
+                      <tr key={pr.url}>
+                        <td className="max-w-[240px] truncate py-2 text-ink">
+                          <a
+                            href={pr.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="hover:text-accent"
+                            title={`${pr.repositoryFullName}#${pr.number}`}
+                          >
+                            {pr.repositoryFullName}#{pr.number}
+                          </a>
+                        </td>
+                        <td className="numeric py-2 text-right text-ink-muted">
+                          {formatAcus(pr.acus)}
+                        </td>
+                        <td className="numeric py-2 text-right text-ink-muted">
+                          {formatUsd(pr.costUsd)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               )}
             </Section>
           </div>
@@ -238,7 +321,7 @@ function ReportSkeleton() {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 gap-px overflow-hidden rounded-[8px] border border-border-subtle bg-border-subtle sm:grid-cols-4">
-        {Array.from({ length: 8 }, (_, index) => (
+        {Array.from({ length: 10 }, (_, index) => (
           <div key={index} className="space-y-2 bg-canvas px-3 py-2.5">
             <Skeleton className="h-2.5 w-20" />
             <Skeleton className="h-4 w-12" />

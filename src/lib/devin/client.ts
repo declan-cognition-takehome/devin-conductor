@@ -10,6 +10,7 @@ import { safeErrorSummary } from '../redact';
  *   GET  /v3/organizations/{org_id}/sessions
  *   GET  /v3/organizations/{org_id}/sessions/{devin_id}
  *   GET  /v3/organizations/{org_id}/sessions/{devin_id}/messages
+ *   GET  /v3/organizations/{org_id}/consumption/daily/sessions/{devin_id}
  *
  * Required service-user permissions: `UseDevinSessions` to create, `ViewOrgSessions` to read.
  */
@@ -43,6 +44,10 @@ export const sessionMessageSchema = z.object({
 });
 
 export type DevinSessionMessage = z.infer<typeof sessionMessageSchema>;
+
+export const sessionConsumptionSchema = z.object({
+  total_acus: z.number().nullable().optional(),
+});
 
 const paginatedMessagesSchema = z.object({
   items: z.array(sessionMessageSchema),
@@ -233,6 +238,19 @@ export class DevinClient {
         },
       },
     );
+  }
+
+  /**
+   * Billed consumption for a session. The session payload reports `acus_consumed` live and
+   * can still read 0 while metering catches up, so this endpoint is the settled figure.
+   */
+  async getSessionConsumption(sessionId: string): Promise<{ totalAcus: number | null }> {
+    const result = await this.request(
+      'GET',
+      `/v3/organizations/${encodeURIComponent(this.orgId)}/consumption/daily/sessions/${encodeURIComponent(sessionId)}`,
+      sessionConsumptionSchema,
+    );
+    return { totalAcus: result.total_acus ?? null };
   }
 
   /** Harmless read used by the Configure connection test. */
