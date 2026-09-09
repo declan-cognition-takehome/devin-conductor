@@ -219,6 +219,40 @@ export function ConfigureView() {
                   })
                 }
               />
+              <SettingRow
+                label="Estimate unmetered sessions"
+                description="Self-serve accounts are billed in on-demand credits and Devin reports no ACUs for them, so sessions are priced from how long they ran. Report figures derived this way are marked estimated."
+                control={
+                  <Switch
+                    label="Estimate unmetered sessions"
+                    checked={settings.estimate_unmetered_costs === 1}
+                    disabled={settingsBusy}
+                    onChange={(checked) =>
+                      void run('settings', async () => {
+                        await patchJson('/api/settings', { estimateUnmeteredCosts: checked });
+                        return null;
+                      })
+                    }
+                  />
+                }
+              />
+              <NumberField
+                label="ACU rate"
+                hint="Dollar price per ACU, used for metered and estimated costs. Empty means costs stay unpriced in the report."
+                value={settings.acu_rate_usd}
+                min={0}
+                max={1000}
+                step={0.01}
+                unit="USD / ACU"
+                nullable
+                disabled={settingsBusy}
+                onCommit={(value) =>
+                  void run('settings', async () => {
+                    await patchJson('/api/settings', { acuRateUsd: value });
+                    return null;
+                  })
+                }
+              />
               <NumberField
                 label="Session poll interval"
                 hint="How often the worker reconciles a running Devin session."

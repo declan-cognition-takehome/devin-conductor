@@ -14,6 +14,7 @@ const devinState = {
   session: null as DevinSession | null,
   sessionsByTag: [] as DevinSession[],
   messages: [] as DevinSessionMessage[],
+  consumptionAcus: null as number | null,
 };
 
 let sessionCounter = 0;
@@ -64,6 +65,7 @@ vi.mock('@/lib/devin/client', async () => {
         end_cursor: null,
         has_next_page: false,
       }),
+      getSessionConsumption: async () => ({ totalAcus: devinState.consumptionAcus }),
     }),
   };
 });
@@ -208,6 +210,7 @@ afterEach(() => {
   devinState.session = null;
   devinState.sessionsByTag = [];
   devinState.messages = [];
+  devinState.consumptionAcus = null;
   store.updateSettings({ paused: false, maxConcurrentSessions: 100, pollIntervalSeconds: 30 });
 });
 
@@ -518,9 +521,46 @@ describe('reconciliation', () => {
     expect(next!.available_at).toBeGreaterThan(Date.now() + 40_000);
   });
 
-  it('stops polling once the session is terminal', async () => {
+  it('reads metered ACUs from consumption when the session payload still reports none', async () => {
+    const { attemptId } = await dispatched();
+    devinState.session = session({ status: 'exit', acus_consumed: 0 });
+    devinState.consumptionAcus = 7.5;
+
+    await reconcileAttempt(attemptId);
+
+    expect(store.getAttempt(attemptId)?.acus).toBe(7.5);
+  });
+
+  it('keeps ACUs recorded when a later poll reports zero again', async () => {
+    const { attemptId } = await dispatched();
+    devinState.session = session({ status: 'running', acus_consumed: 5 });
+    await reconcileAttempt(attemptId);
+
+    devinState.session = session({ status: 'running', acus_consumed: 0 });
+    await reconcileAttempt(attemptId);
+
+    expect(store.getAttempt(attemptId)?.acus).toBe(5);
+  });
+
+  it('keeps polling a terminal session until its ACUs are metered', async () => {
     const { attemptId } = await dispatched();
     devinState.session = session({ status: 'exit' });
+    isolateAttempt(attemptId);
+    jobs.enqueueJob({
+      jobType: 'reconcile_attempt',
+      entityId: attemptId,
+      dedupeKey: `reconcile:${attemptId}`,
+    });
+
+    await reconcileViaWorker(attemptId);
+
+    expect(store.getAttempt(attemptId)?.acus).toBeNull();
+    expect(pendingPoll(attemptId)).toBeDefined();
+  });
+
+  it('stops polling once the session is terminal and metered', async () => {
+    const { attemptId } = await dispatched();
+    devinState.session = session({ status: 'exit', acus_consumed: 12 });
     isolateAttempt(attemptId);
     jobs.enqueueJob({
       jobType: 'reconcile_attempt',

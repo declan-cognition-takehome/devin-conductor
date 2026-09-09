@@ -196,7 +196,13 @@ function Sidebar({
       <div className="mt-auto space-y-2 pt-4">
         <HealthItem collapsed={collapsed} />
         <div className={clsx('h-px bg-border-subtle', collapsed && '-mx-2')} />
-        <AccountMenu login={login} avatarUrl={avatarUrl} collapsed={collapsed} align="start" />
+        <AccountMenu
+          login={login}
+          avatarUrl={avatarUrl}
+          collapsed={collapsed}
+          align="start"
+          side="top"
+        />
       </div>
     </div>
   );
@@ -267,12 +273,16 @@ function HealthItem({ collapsed }: { collapsed: boolean }) {
   if (!ready) return null;
 
   const integrationsReady = ready.integrations.github && ready.integrations.devin;
+  const healthy = ready.status === 'ready' && integrationsReady;
+  // Health only earns a row when it has something to report.
+  if (healthy && ready.pendingJobs === 0) return null;
+
   const tone = ready.status !== 'ready' ? 'critical' : integrationsReady ? 'positive' : 'caution';
   const label = !integrationsReady
     ? 'Integrations incomplete'
     : ready.pendingJobs > 0
       ? `${ready.pendingJobs} job${ready.pendingJobs === 1 ? '' : 's'} queued`
-      : 'All systems normal';
+      : 'Service degraded';
 
   const content = (
     <Link
@@ -311,11 +321,13 @@ function AccountMenu({
   avatarUrl,
   collapsed = false,
   align,
+  side,
 }: {
   login: string;
   avatarUrl: string | null;
   collapsed?: boolean;
   align: 'start' | 'end';
+  side?: 'top' | 'bottom';
 }) {
   async function signOut() {
     await postJson('/api/auth/logout', {});
@@ -326,6 +338,7 @@ function AccountMenu({
     <Menu
       label="Account"
       align={align}
+      side={side}
       trigger={(props) => (
         <button
           type="button"

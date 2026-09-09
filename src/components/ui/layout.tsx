@@ -1,8 +1,10 @@
 import type { ReactNode } from 'react';
+import type { LucideIcon } from 'lucide-react';
 import clsx from 'clsx';
 
 export function PageHeader({
   title,
+  icon: Icon,
   description,
   breadcrumb,
   actions,
@@ -10,6 +12,7 @@ export function PageHeader({
   className,
 }: {
   title: ReactNode;
+  icon?: LucideIcon;
   description?: ReactNode;
   breadcrumb?: ReactNode;
   actions?: ReactNode;
@@ -22,7 +25,10 @@ export function PageHeader({
     >
       <div className="min-w-0">
         {breadcrumb && <div className="mb-1 text-meta text-ink-faint">{breadcrumb}</div>}
-        <h1 className="text-page-title font-semibold tracking-[-0.01em] text-ink">{title}</h1>
+        <h1 className="flex items-center gap-2 text-page-title font-semibold tracking-[-0.01em] text-ink">
+          {Icon && <Icon aria-hidden className="h-[1em] w-[1em] shrink-0 text-accent" />}
+          {title}
+        </h1>
         {description && <p className="mt-1 max-w-2xl text-body text-ink-muted">{description}</p>}
         {meta && <div className="mt-1.5 text-meta text-ink-muted">{meta}</div>}
       </div>

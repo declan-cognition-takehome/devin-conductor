@@ -645,7 +645,6 @@ function Messages({
     <Section
       title="Session transcript"
       id="transcript"
-      description="Redacted excerpts of the Devin session. Replies happen in Devin."
       actions={
         sessionUrl && (
           <a

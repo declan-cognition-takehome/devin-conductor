@@ -139,7 +139,8 @@ export async function dispatchTask(taskId: string): Promise<void> {
     status: 'dispatched',
     raw_status: session.status,
     status_detail: session.status_detail ?? null,
-    acus: session.acus_consumed ?? null,
+    // A freshly created session reports 0 ACUs; reconciliation records the metered total.
+    acus: session.acus_consumed ? session.acus_consumed : null,
     dispatched_at: now,
     error_summary: null,
   });

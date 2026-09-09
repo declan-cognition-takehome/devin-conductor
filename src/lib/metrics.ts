@@ -1,4 +1,5 @@
 import { db } from './db';
+import { getSettings } from './db/store';
 
 /**
  * Every figure here is computed from persisted rows. Ratios return null when the
@@ -21,7 +22,13 @@ export interface Kpis {
   prRate: number | null;
   mergeRate: number | null;
   needsAttention: number;
-  totalAcus: number;
+  /** Null when no session has reported metered usage yet, so the UI can say "unknown". */
+  totalAcus: number | null;
+  acuRateUsd: number | null;
+  /** True when at least one session in the window was priced from runtime rather than metered usage. */
+  costsEstimated: boolean;
+  totalCostUsd: number | null;
+  medianPrCostUsd: number | null;
   medianTimeToPrMs: number | null;
   medianTimeToFirstDispatchMs: number | null;
 }
@@ -39,7 +46,8 @@ export interface RepositoryStat {
   prs: number;
   merged: number;
   needsAttention: number;
-  acus: number;
+  acus: number | null;
+  costUsd: number | null;
 }
 
 export interface AuthorStat {
@@ -48,9 +56,14 @@ export interface AuthorStat {
   merged: number;
 }
 
-export interface FailureStat {
-  reason: string;
-  count: number;
+export interface PullRequestCost {
+  url: string;
+  repositoryFullName: string;
+  number: number;
+  merged: boolean;
+  acus: number | null;
+  costUsd: number | null;
+  estimated: boolean;
 }
 
 export interface MetricsSnapshot {
@@ -59,9 +72,29 @@ export interface MetricsSnapshot {
   daily: DailyPoint[];
   repositories: RepositoryStat[];
   authors: AuthorStat[];
-  failures: FailureStat[];
+  pullRequestCosts: PullRequestCost[];
   windowDays: number;
   generatedAt: number;
+}
+
+/**
+ * Devin meters roughly one ACU per fifteen minutes of session work. Self-serve accounts are
+ * billed in on-demand credits and the API reports no ACUs for them, so a session's runtime
+ * stands in for its usage and every figure derived that way is labelled as an estimate.
+ */
+const ESTIMATED_MS_PER_ACU = 15 * 60 * 1000;
+const MIN_ESTIMATED_ACUS = 0.25;
+
+function acusExpression(alias: string, estimate: boolean): string {
+  const metered = `${alias}.acus`;
+  if (!estimate) return metered;
+  const ranFor = `COALESCE(${alias}.terminal_at, ${alias}.last_reconciled_at, ${alias}.updated_at)
+     - COALESCE(${alias}.dispatched_at, ${alias}.created_at)`;
+  return `CASE
+     WHEN ${metered} IS NOT NULL THEN ${metered}
+     WHEN ${alias}.devin_session_id IS NULL THEN NULL
+     ELSE MAX(${MIN_ESTIMATED_ACUS}, (${ranFor}) * 1.0 / ${ESTIMATED_MS_PER_ACU})
+   END`;
 }
 
 function ratio(numerator: number, denominator: number): number | null {
@@ -116,11 +149,22 @@ export function collectMetrics(windowDays = 30): MetricsSnapshot {
   const prsOpened = prCounts?.opened ?? 0;
   const prsMerged = prCounts?.merged ?? 0;
 
+  const settings = getSettings();
+  const estimate = settings.estimate_unmetered_costs === 1;
+  const attemptAcus = acusExpression('a', estimate);
+
   const acuRow = conn
-    .prepare<[number], { total: number | null }>(
-      'SELECT SUM(acus) AS total FROM devin_session_attempts WHERE created_at >= ?',
+    .prepare<[number], { total: number | null; estimated: number }>(
+      `SELECT SUM(${attemptAcus}) AS total,
+              SUM(CASE WHEN a.acus IS NULL AND a.devin_session_id IS NOT NULL THEN 1 ELSE 0 END)
+                AS estimated
+       FROM devin_session_attempts a WHERE a.created_at >= ?`,
     )
     .get(since);
+  const totalAcus = acuRow?.total ?? null;
+  const acuRateUsd = settings.acu_rate_usd;
+  const cost = (acus: number | null): number | null =>
+    acus === null || acuRateUsd === null ? null : acus * acuRateUsd;
 
   const timeToPr = conn
     .prepare<[number], { ms: number }>(
@@ -152,17 +196,19 @@ export function collectMetrics(windowDays = 30): MetricsSnapshot {
     .all(since);
 
   const repositories = conn
-    .prepare<[number], RepositoryStat>(
+    .prepare<[number], Omit<RepositoryStat, 'costUsd'>>(
       `SELECT t.repository_full_name AS repositoryFullName,
               COUNT(*) AS tasks,
               SUM(CASE WHEN t.first_pr_at IS NOT NULL THEN 1 ELSE 0 END) AS prs,
               SUM(CASE WHEN t.ui_state = 'merged' THEN 1 ELSE 0 END) AS merged,
               SUM(CASE WHEN t.ui_state = 'needs_attention' THEN 1 ELSE 0 END) AS needsAttention,
-              COALESCE((SELECT SUM(a.acus) FROM devin_session_attempts a WHERE a.task_id = t.id), 0) AS acus
+              (SELECT SUM(${attemptAcus}) FROM devin_session_attempts a WHERE a.task_id = t.id)
+                AS acus
        FROM tasks t WHERE t.created_at >= ?
        GROUP BY t.repository_full_name ORDER BY tasks DESC`,
     )
-    .all(since);
+    .all(since)
+    .map((repo) => ({ ...repo, costUsd: cost(repo.acus) }));
 
   const authors = conn
     .prepare<[number], AuthorStat>(
@@ -174,14 +220,44 @@ export function collectMetrics(windowDays = 30): MetricsSnapshot {
     )
     .all(since);
 
-  const failures = conn
-    .prepare<[number], FailureStat>(
-      `SELECT COALESCE(secondary_outcome, 'unclassified') AS reason, COUNT(*) AS count
-       FROM tasks
-       WHERE created_at >= ? AND ui_state = 'needs_attention'
-       GROUP BY reason ORDER BY count DESC`,
+  /**
+   * A pull request costs a share of its session: one session can open several, and only the
+   * session is metered, so its ACUs are divided evenly across the PRs it produced.
+   */
+  const pullRequestCosts: PullRequestCost[] = conn
+    .prepare<
+      [number],
+      {
+        url: string;
+        repositoryFullName: string;
+        number: number;
+        merged: number;
+        acus: number | null;
+        estimated: number;
+      }
+    >(
+      `SELECT p.url AS url,
+              p.repository_full_name AS repositoryFullName,
+              p.number AS number,
+              p.merged AS merged,
+              (SELECT (${attemptAcus}) * 1.0 / (SELECT COUNT(*) FROM pull_requests s WHERE s.attempt_id = p.attempt_id)
+               FROM devin_session_attempts a WHERE a.id = p.attempt_id) AS acus,
+              (SELECT CASE WHEN a.acus IS NULL THEN 1 ELSE 0 END
+               FROM devin_session_attempts a WHERE a.id = p.attempt_id) AS estimated
+       FROM pull_requests p
+       WHERE p.created_at >= ? AND p.task_id IS NOT NULL
+       ORDER BY p.created_at DESC`,
     )
-    .all(since);
+    .all(since)
+    .map((row) => ({
+      url: row.url,
+      repositoryFullName: row.repositoryFullName,
+      number: row.number,
+      merged: row.merged === 1,
+      acus: row.acus,
+      costUsd: cost(row.acus),
+      estimated: row.estimated === 1,
+    }));
 
   return {
     funnel: {
@@ -199,14 +275,20 @@ export function collectMetrics(windowDays = 30): MetricsSnapshot {
       prRate: ratio(prsOpened, dispatched),
       mergeRate: ratio(prsMerged, prsOpened),
       needsAttention: counts?.needs_attention ?? 0,
-      totalAcus: acuRow?.total ?? 0,
+      totalAcus,
+      acuRateUsd,
+      costsEstimated: (acuRow?.estimated ?? 0) > 0 && estimate,
+      totalCostUsd: cost(totalAcus),
+      medianPrCostUsd: median(
+        pullRequestCosts.map((pr) => pr.costUsd).filter((value): value is number => value !== null),
+      ),
       medianTimeToPrMs: median(timeToPr),
       medianTimeToFirstDispatchMs: median(timeToDispatch),
     },
     daily,
     repositories,
     authors,
-    failures,
+    pullRequestCosts,
     windowDays,
     generatedAt: Date.now(),
   };
