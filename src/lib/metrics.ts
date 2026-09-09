@@ -205,7 +205,7 @@ export function collectMetrics(windowDays = 30): MetricsSnapshot {
               SUM(CASE WHEN t.first_pr_at IS NOT NULL THEN 1 ELSE 0 END) AS prs,
               SUM(CASE WHEN t.ui_state = 'merged' THEN 1 ELSE 0 END) AS merged,
               SUM(CASE WHEN t.ui_state = 'needs_attention' THEN 1 ELSE 0 END) AS needsAttention,
-              (SELECT SUM(${attemptAcus}) FROM devin_session_attempts a WHERE a.task_id = t.id)
+              SUM((SELECT SUM(${attemptAcus}) FROM devin_session_attempts a WHERE a.task_id = t.id))
                 AS acus
        FROM tasks t WHERE t.created_at >= ?
        GROUP BY t.repository_full_name ORDER BY tasks DESC`,
