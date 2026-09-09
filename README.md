@@ -1,14 +1,11 @@
 # Devin Conductor
 
-Conductor turns GitHub issues into Devin sessions.
+Devin Conductor turns GitHub issues into Devin sessions.
 
-When someone in the configured GitHub org opens an issue in an enabled repository, Conductor
-starts a Devin session for that repository, keeps one status comment on the issue up to date,
+When someone opens an issue in an enabled GitHub repository, Conductor
+automates the resolution - it starts a Devin session for that repository, keeps one status comment on the issue up to date,
 and tracks the resulting pull request until a person merges or closes it.
 
-It was built for a take-home exercise: pick issues in a fork of Apache Superset, have Devin fix
-them from an event trigger, and show enough reporting that an engineering lead can tell whether
-it is working.
 
 ## The UI
 
@@ -16,8 +13,8 @@ Three pages:
 
 - **Observe** – list of tasks and their current state. Each task links to the Devin session and
   shows messages and pull requests.
-- **Report** – how many issues were dispatched, how many got a PR, how many were merged, median
-  time to PR, and the same numbers per repository.
+- **Report** – Cost tracking, how many issues were dispatched, how many got a PR, how many were merged, median
+  time to PR, and adoption metrics.
 - **Configure** – which repositories are enabled, max concurrent sessions, ACU limit, a global
   pause switch, and connection checks for GitHub and Devin.
 
