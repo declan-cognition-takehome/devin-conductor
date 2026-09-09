@@ -7,6 +7,10 @@ automates the resolution - it starts a Devin session for that repository, keeps 
 and tracks the resulting pull request until a person merges or closes it.
 
 
+<img width="1624" height="999" alt="Screenshot 2026-09-09 at 9 15 55 pm" src="https://github.com/user-attachments/assets/5054b90d-dff7-4e74-bae6-81835c764616" />
+
+
+
 ## The UI
 
 Three pages:
