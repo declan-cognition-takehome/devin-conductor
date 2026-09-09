@@ -224,7 +224,7 @@ export function TaskDetail({ taskId }: { taskId: string }) {
           <>
             Conductor dispatches a new Devin session for{' '}
             <span className="numeric">#{task.issue_number}</span>. The previous session is left
-            untouched and the new attempt consumes additional ACUs.
+            untouched and the new attempt consumes additional usage.
           </>
         }
         confirmLabel={retrying ? 'Queueing…' : 'Queue new attempt'}
@@ -351,7 +351,6 @@ function AttemptSummary({
         </span>
       </div>
       <dl className="space-y-1 text-meta">
-        <MetaRow label="ACUs" value={attempt.acus === null ? '—' : String(attempt.acus)} numeric />
         <MetaRow
           label="Dispatched"
           value={formatRelative(attempt.dispatched_at)}

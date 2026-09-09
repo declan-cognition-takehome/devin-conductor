@@ -14,7 +14,6 @@ import {
   Segmented,
   Skeleton,
   StatusDot,
-  formatAcus,
   formatDuration,
   formatPercent,
   formatRelative,
@@ -158,8 +157,8 @@ export function ReportView() {
               value={formatUsd(kpis.totalCostUsd)}
               hint={
                 kpis.acuRateUsd === null
-                  ? 'Set an ACU rate in Configure'
-                  : `at ${formatUsd(kpis.acuRateUsd)} per ACU`
+                  ? 'Set a cost rate in Configure'
+                  : 'Estimated from session activity'
               }
               className="bg-canvas"
             />
@@ -254,7 +253,7 @@ export function ReportView() {
                       <th scope="col" className="py-1.5 font-normal">
                         Repository
                       </th>
-                      {['Tasks', 'PRs', 'Merged', 'ACUs', 'Cost'].map((column) => (
+                      {['Tasks', 'PRs', 'Merged', 'Cost'].map((column) => (
                         <th key={column} scope="col" className="py-1.5 text-right font-normal">
                           {column}
                         </th>
@@ -274,9 +273,6 @@ export function ReportView() {
                         <td className="numeric py-2 text-right text-ink-muted">{repo.prs}</td>
                         <td className="numeric py-2 text-right text-ink-muted">{repo.merged}</td>
                         <td className="numeric py-2 text-right text-ink-muted">
-                          {formatAcus(repo.acus)}
-                        </td>
-                        <td className="numeric py-2 text-right text-ink-muted">
                           {formatUsd(repo.costUsd)}
                         </td>
                       </tr>
@@ -291,7 +287,7 @@ export function ReportView() {
               title="Pull request costs"
               description={
                 kpis.acuRateUsd === null
-                  ? 'Set an ACU rate in Configure to price these sessions.'
+                  ? 'Set a cost rate in Configure to price these sessions.'
                   : undefined
               }
             >
@@ -304,11 +300,9 @@ export function ReportView() {
                       <th scope="col" className="py-1.5 font-normal">
                         Pull request
                       </th>
-                      {['ACUs', 'Cost'].map((column) => (
-                        <th key={column} scope="col" className="py-1.5 text-right font-normal">
-                          {column}
-                        </th>
-                      ))}
+                      <th scope="col" className="py-1.5 text-right font-normal">
+                        Cost
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border-subtle">
@@ -324,9 +318,6 @@ export function ReportView() {
                           >
                             {pr.repositoryFullName}#{pr.number}
                           </a>
-                        </td>
-                        <td className="numeric py-2 text-right text-ink-muted">
-                          {formatAcus(pr.acus)}
                         </td>
                         <td className="numeric py-2 text-right text-ink-muted">
                           {formatUsd(pr.costUsd)}

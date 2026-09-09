@@ -176,9 +176,6 @@ export function TaskList({ banner }: { banner?: React.ReactNode }) {
                 <th scope="col" className="hidden px-3 py-2 font-normal sm:table-cell">
                   PR
                 </th>
-                <th scope="col" className="hidden px-3 py-2 text-right font-normal sm:table-cell">
-                  ACUs
-                </th>
                 <th scope="col" className="px-3 py-2 text-right font-normal">
                   Updated
                 </th>
@@ -239,9 +236,6 @@ function TaskRow({ task }: { task: TaskListItem }) {
         ) : (
           <span className="text-meta text-ink-faint">—</span>
         )}
-      </td>
-      <td className="numeric hidden px-3 py-2.5 text-right align-middle text-meta text-ink-muted sm:table-cell">
-        {task.acus ?? '—'}
       </td>
       <td className="numeric px-3 py-2.5 text-right align-middle text-meta text-ink-muted whitespace-nowrap">
         <Tooltip label={formatTime(task.last_activity_at)}>

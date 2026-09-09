@@ -221,7 +221,7 @@ export function ConfigureView() {
               />
               <SettingRow
                 label="Estimate unmetered sessions"
-                description="Self-serve accounts are billed in on-demand credits and Devin reports no ACUs for them, so sessions are priced from the size of their transcript. Report figures derived this way are marked estimated."
+                description="Devin reports no metered usage for self-serve accounts, so sessions are priced from the size of their transcript instead. Report figures derived this way are marked estimated."
                 control={
                   <Switch
                     label="Estimate unmetered sessions"
@@ -237,13 +237,13 @@ export function ConfigureView() {
                 }
               />
               <NumberField
-                label="ACU rate"
-                hint="Dollar price per ACU, used for metered and estimated costs. Empty means costs stay unpriced in the report."
+                label="Cost rate"
+                hint="Dollars per unit of session usage, where a unit is roughly 2,000 characters of transcript. Empty means costs stay unpriced in the report."
                 value={settings.acu_rate_usd}
                 min={0}
                 max={1000}
                 step={0.01}
-                unit="USD / ACU"
+                unit="USD / unit"
                 nullable
                 disabled={settingsBusy}
                 onCommit={(value) =>
