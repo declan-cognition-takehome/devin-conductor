@@ -5,6 +5,7 @@ export interface StateInputs {
   hasOpenPr: boolean;
   hasMergedPr: boolean;
   hasClosedUnmergedPr: boolean;
+  issueClosed?: boolean;
   devinStatus?: string | null;
   devinStatusDetail?: string | null;
   dispatchExhausted?: boolean;
@@ -34,7 +35,7 @@ export function isAwaitingInputDetail(detail: string | null | undefined): boolea
 }
 
 /**
- * Maps detailed internal state plus business facts to the six user-facing states.
+ * Maps detailed internal state plus business facts to the user-facing states.
  * Business outcomes (an open or merged PR) always take precedence over raw session state.
  */
 export function mapUiState(input: StateInputs): MappedState {
@@ -43,6 +44,10 @@ export function mapUiState(input: StateInputs): MappedState {
   }
   if (input.hasMergedPr) {
     return { uiState: 'merged', secondaryOutcome: null };
+  }
+  // Conductor never closes an issue, so a closed issue is a human resolving the task.
+  if (input.issueClosed) {
+    return { uiState: 'closed', secondaryOutcome: null };
   }
   if (input.hasOpenPr) {
     return { uiState: 'pr_ready', secondaryOutcome: null };
@@ -85,6 +90,7 @@ export const UI_STATE_LABELS: Record<UiState, string> = {
   pr_ready: 'PR ready',
   merged: 'Merged',
   needs_attention: 'Needs attention',
+  closed: 'Issue closed',
   ignored: 'Ignored',
 };
 

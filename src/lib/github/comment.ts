@@ -35,6 +35,10 @@ export function buildCommentBody(input: CommentInput): string {
     lines.push('');
     lines.push(`> ${task.needs_attention_reason}`);
   }
+  if (task.ui_state === 'closed') {
+    lines.push('');
+    lines.push('> This issue was closed on GitHub, so Devin Conductor stopped tracking it.');
+  }
   lines.push('');
   lines.push(
     '_A human reviews and merges the pull request. Devin Conductor never merges pull requests or closes issues._',

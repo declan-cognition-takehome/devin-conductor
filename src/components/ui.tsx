@@ -7,6 +7,7 @@ export const STATE_LABELS: Record<UiState, string> = {
   pr_ready: 'PR ready',
   merged: 'Merged',
   needs_attention: 'Needs attention',
+  closed: 'Issue closed',
   ignored: 'Ignored',
 };
 
@@ -16,6 +17,7 @@ const STATE_CLASSES: Record<UiState, string> = {
   pr_ready: 'border-positive/40 text-positive',
   merged: 'border-positive/60 text-positive',
   needs_attention: 'border-critical/50 text-critical',
+  closed: 'border-border-subtle text-ink-muted',
   ignored: 'border-border-subtle text-ink-muted/70',
 };
 
