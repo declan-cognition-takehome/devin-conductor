@@ -25,7 +25,7 @@ export interface Kpis {
   /** Null when no session has reported metered usage yet, so the UI can say "unknown". */
   totalAcus: number | null;
   acuRateUsd: number | null;
-  /** True when at least one session in the window was priced from runtime rather than metered usage. */
+  /** True when at least one session in the window was priced from its transcript rather than metered usage. */
   costsEstimated: boolean;
   totalCostUsd: number | null;
   medianPrCostUsd: number | null;
@@ -78,22 +78,23 @@ export interface MetricsSnapshot {
 }
 
 /**
- * Devin meters roughly one ACU per fifteen minutes of session work. Self-serve accounts are
- * billed in on-demand credits and the API reports no ACUs for them, so a session's runtime
- * stands in for its usage and every figure derived that way is labelled as an estimate.
+ * Self-serve accounts are billed in on-demand credits and the API reports no ACUs for them, so
+ * how much a session said stands in for how much it cost: transcript characters scale with the
+ * work Devin did, unlike wall-clock time, which keeps running while a session idles. It is a
+ * crude proxy, so every figure derived from it is labelled as an estimate.
  */
-const ESTIMATED_MS_PER_ACU = 15 * 60 * 1000;
+const ESTIMATED_CHARS_PER_ACU = 2000;
 const MIN_ESTIMATED_ACUS = 0.25;
 
 function acusExpression(alias: string, estimate: boolean): string {
   const metered = `${alias}.acus`;
   if (!estimate) return metered;
-  const ranFor = `COALESCE(${alias}.terminal_at, ${alias}.last_reconciled_at, ${alias}.updated_at)
-     - COALESCE(${alias}.dispatched_at, ${alias}.created_at)`;
+  const transcriptChars = `COALESCE(
+     (SELECT SUM(LENGTH(m.message)) FROM devin_messages m WHERE m.attempt_id = ${alias}.id), 0)`;
   return `CASE
      WHEN ${metered} IS NOT NULL THEN ${metered}
      WHEN ${alias}.devin_session_id IS NULL THEN NULL
-     ELSE MAX(${MIN_ESTIMATED_ACUS}, (${ranFor}) * 1.0 / ${ESTIMATED_MS_PER_ACU})
+     ELSE MAX(${MIN_ESTIMATED_ACUS}, ${transcriptChars} * 1.0 / ${ESTIMATED_CHARS_PER_ACU})
    END`;
 }
 
@@ -222,7 +223,7 @@ export function collectMetrics(windowDays = 30): MetricsSnapshot {
 
   /**
    * A pull request costs a share of its session: one session can open several, and only the
-   * session is metered, so its ACUs are divided evenly across the PRs it produced.
+   * session is priced, so its ACUs are divided evenly across the PRs it produced.
    */
   const pullRequestCosts: PullRequestCost[] = conn
     .prepare<

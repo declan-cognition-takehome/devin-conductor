@@ -166,7 +166,7 @@ export function ReportView() {
                 kpis.totalAcus === null
                   ? 'No metered usage reported yet'
                   : kpis.costsEstimated
-                    ? 'Estimated from session runtime'
+                    ? 'Estimated from session transcript size'
                     : undefined
               }
               className="bg-canvas"
@@ -271,7 +271,7 @@ export function ReportView() {
               description={
                 kpis.acuRateUsd === null
                   ? 'Set an ACU rate in Configure to price these sessions.'
-                  : 'Session usage is split evenly across the pull requests it produced. Rows marked est. are priced from session runtime because Devin reported no metered usage.'
+                  : undefined
               }
             >
               {data.pullRequestCosts.length === 0 ? (

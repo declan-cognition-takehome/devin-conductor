@@ -136,15 +136,24 @@ describe('collectMetrics', () => {
     store.updateSettings({ acuRateUsd: null });
   });
 
-  it('estimates cost from runtime when Devin reports no metered usage', () => {
+  it('estimates cost from transcript size when Devin reports no metered usage', () => {
     const taskId = createTask('queued');
     const attempt = store.createAttempt({ taskId, attemptNumber: 1, dispatchTag: 'tag-est' });
-    const dispatchedAt = Date.now() - 30 * 60_000;
-    store.updateAttempt(attempt.id, {
-      devin_session_id: 'devin-est',
-      dispatched_at: dispatchedAt,
-      terminal_at: dispatchedAt + 30 * 60_000,
-    });
+    store.updateAttempt(attempt.id, { devin_session_id: 'devin-est' });
+    store.insertMessages(attempt.id, [
+      {
+        devinMessageId: 'm-1',
+        source: 'devin',
+        message: 'x'.repeat(3000),
+        createdAt: Date.now(),
+      },
+      {
+        devinMessageId: 'm-2',
+        source: 'user',
+        message: 'y'.repeat(1000),
+        createdAt: Date.now(),
+      },
+    ]);
     store.upsertPullRequest({
       taskId,
       attemptId: attempt.id,
