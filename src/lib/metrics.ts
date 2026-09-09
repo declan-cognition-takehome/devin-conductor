@@ -53,7 +53,8 @@ export interface RepositoryStat {
 export interface AuthorStat {
   authorLogin: string;
   tasks: number;
-  merged: number;
+  /** Pull requests Conductor merged for this developer, the adoption signal. */
+  mergedPrs: number;
 }
 
 export interface PullRequestCost {
@@ -213,11 +214,12 @@ export function collectMetrics(windowDays = 30): MetricsSnapshot {
 
   const authors = conn
     .prepare<[number], AuthorStat>(
-      `SELECT author_login AS authorLogin,
-              COUNT(*) AS tasks,
-              SUM(CASE WHEN ui_state = 'merged' THEN 1 ELSE 0 END) AS merged
-       FROM tasks WHERE created_at >= ? AND ui_state != 'ignored'
-       GROUP BY author_login ORDER BY tasks DESC LIMIT 25`,
+      `SELECT t.author_login AS authorLogin,
+              COUNT(DISTINCT t.id) AS tasks,
+              COUNT(DISTINCT CASE WHEN p.merged = 1 THEN p.id END) AS mergedPrs
+       FROM tasks t LEFT JOIN pull_requests p ON p.task_id = t.id
+       WHERE t.created_at >= ? AND t.ui_state != 'ignored'
+       GROUP BY t.author_login ORDER BY mergedPrs DESC, tasks DESC LIMIT 25`,
     )
     .all(since);
 
