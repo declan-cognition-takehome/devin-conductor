@@ -105,17 +105,6 @@ of crashing the app. See `.env.example` for the full list.
 5. Callback URL `https://<host>/api/auth/callback`.
 6. Install it on the repositories you want available, then enable them in **Configure**.
 
-## Security
-
-- Webhook signatures are verified against the raw body with HMAC-SHA256 and a timing-safe
-  comparison, before anything is persisted; deliveries are deduplicated by delivery ID.
-- Sign-in is GitHub OAuth with state protection and a server-side org membership check; OAuth
-  tokens are never persisted, only local user metadata.
-- Sessions are signed, `__Host-` prefixed, HttpOnly and Secure; mutations require a
-  double-submit CSRF token; unauthenticated API access is rejected.
-- Secrets stay in process memory — never in SQLite, never in API responses. Logs and stored job
-  errors run through a redactor covering `cog_` keys, GitHub tokens, private keys, bearer
-  tokens, signatures and JWTs.
 
 ## Operations
 
