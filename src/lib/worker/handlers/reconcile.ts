@@ -16,7 +16,7 @@ import {
 import { enqueueJob } from '../../queue/jobs';
 import { devinClient } from '../../devin/client';
 import { parsePullRequestUrl } from '../../github/events';
-import { isTerminalDevinStatus } from '../../tasks/state';
+import { isAwaitingInputDetail, isTerminalDevinStatus } from '../../tasks/state';
 import { redact } from '../../redact';
 
 const MAX_MESSAGE_CHARS = 8_000;
@@ -44,6 +44,21 @@ export async function reconcileAttempt(attemptId: string): Promise<void> {
     last_reconciled_at: now,
     terminal_at: terminal ? (attempt.terminal_at ?? now) : null,
   });
+
+  const detailChanged = (session.status_detail ?? null) !== attempt.status_detail;
+  if (
+    detailChanged &&
+    isAwaitingInputDetail(session.status_detail) &&
+    !isAwaitingInputDetail(attempt.status_detail)
+  ) {
+    addTaskEvent({
+      taskId: task.id,
+      eventType: 'session_awaiting_input',
+      source: 'devin',
+      summary: 'Devin is waiting for a human reply in the session',
+      metadata: { sessionId: session.session_id, statusDetail: session.status_detail },
+    });
+  }
 
   if (statusChanged) {
     addTaskEvent({
@@ -98,12 +113,22 @@ export async function reconcileAttempt(attemptId: string): Promise<void> {
     updateTask(task.id, { internal_state: 'session_terminal', last_activity_at: now });
   }
   const updated = recomputeTaskState(task.id);
-  if (updated?.ui_state === 'needs_attention' && !updated.needs_attention_reason) {
-    updateTask(task.id, {
-      needs_attention_reason: session.status_detail
-        ? `Devin session ended: ${session.status} (${session.status_detail})`
-        : `Devin session ended: ${session.status}`,
-    });
+  if (updated?.ui_state === 'needs_attention') {
+    if (updated.secondary_outcome === 'awaiting_input') {
+      updateTask(task.id, {
+        needs_attention_reason:
+          'Devin is waiting for a human reply in the session before it can continue.',
+      });
+    } else if (!updated.needs_attention_reason) {
+      updateTask(task.id, {
+        needs_attention_reason: session.status_detail
+          ? `Devin session ended: ${session.status} (${session.status_detail})`
+          : `Devin session ended: ${session.status}`,
+      });
+    }
+  } else if (updated?.needs_attention_reason) {
+    // The session resumed on its own (or produced a PR); the stale reason must not linger.
+    updateTask(task.id, { needs_attention_reason: null });
   }
 
   enqueueJob({ jobType: 'sync_comment', entityId: task.id, dedupeKey: `comment:${task.id}` });

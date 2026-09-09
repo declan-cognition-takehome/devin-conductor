@@ -501,6 +501,7 @@ export function recomputeTaskState(taskId: string): TaskRow | undefined {
     hasMergedPr,
     hasClosedUnmergedPr,
     devinStatus: attempt?.raw_status ?? null,
+    devinStatusDetail: attempt?.status_detail ?? null,
     dispatchExhausted: task.internal_state === 'failed',
     anomaly: task.secondary_outcome === 'anomaly',
   });
@@ -516,7 +517,8 @@ export function recomputeTaskState(taskId: string): TaskRow | undefined {
     first_pr_at: task.first_pr_at ?? firstPr?.pr_created_at ?? null,
     merged_at: task.merged_at ?? mergedPr?.merged_at ?? null,
     terminal_at:
-      mapped.uiState === 'merged' || mapped.uiState === 'needs_attention'
+      mapped.uiState === 'merged' ||
+      (mapped.uiState === 'needs_attention' && mapped.secondaryOutcome !== 'awaiting_input')
         ? (task.terminal_at ?? now())
         : task.terminal_at,
     last_activity_at: now(),

@@ -19,6 +19,7 @@ export type SecondaryOutcome =
   | 'dispatch_exhausted'
   | 'devin_error'
   | 'devin_suspended'
+  | 'awaiting_input'
   | 'anomaly';
 
 export type EventSource = 'github' | 'devin_conductor' | 'devin' | 'user';

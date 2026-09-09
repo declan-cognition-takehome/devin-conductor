@@ -55,6 +55,23 @@ describe('mapUiState', () => {
     expect(mapUiState({ ...base, anomaly: true }).secondaryOutcome).toBe('anomaly');
   });
 
+  it('surfaces a running session that is waiting on a human reply', () => {
+    expect(
+      mapUiState({ ...base, devinStatus: 'running', devinStatusDetail: 'waiting_for_user' }),
+    ).toEqual({ uiState: 'needs_attention', secondaryOutcome: 'awaiting_input' });
+  });
+
+  it('lets a delivered PR outrank a session waiting on a reply', () => {
+    expect(
+      mapUiState({
+        ...base,
+        hasOpenPr: true,
+        devinStatus: 'running',
+        devinStatusDetail: 'waiting_for_user',
+      }).uiState,
+    ).toBe('pr_ready');
+  });
+
   it('keeps ignored tasks ignored', () => {
     expect(mapUiState({ ...base, internalState: 'ignored', devinStatus: 'error' })).toEqual({
       uiState: 'ignored',
