@@ -1,6 +1,6 @@
 # Devin Conductor
 
-Devin Conductor turns GitHub issues into Devin sessions.
+Devin Conductor orchestates Devin, the AI coding agent, to automatically author PRs that resolve GitHub issues as soon as they're raised.
 
 When someone opens an issue in an enabled GitHub repository, Conductor
 automates the resolution - it starts a Devin session for that repository, keeps one status comment on the issue up to date,
