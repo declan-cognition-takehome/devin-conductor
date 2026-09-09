@@ -33,12 +33,12 @@ GitHub  ──webhook──▶  /api/github/webhook  ──▶  webhook_deliveri
 ```
 
 - Next.js (App Router) and TypeScript, running as a single container.
-- SQLite via `better-sqlite3`. Migrations run at startup. All state lives on one mounted volume.
+- SQLite for DB and job queue.
 - The job queue is a SQLite table. Jobs are claimed in a transaction with a two-minute lease;
   if the process dies the lease expires and the job is picked up again. Failed jobs retry with
   exponential backoff. Jobs that can't run yet because of the pause switch or the concurrency
   limit are deferred without counting as a failed attempt.
-- One worker loop runs in the process where `WORKER_ENABLED=true`.
+- One worker loop runs in the process.
 
 ### Design notes
 
