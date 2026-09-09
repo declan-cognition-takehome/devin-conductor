@@ -104,7 +104,8 @@ describe('issue status comment', () => {
     const commentId = store.getTask(taskId)?.github_comment_id;
     expect(commentId).toBeGreaterThan(0);
     expect(github.calls[0]?.body).toContain('Devin Conductor');
-    expect(github.calls[0]?.body).toMatch(/merge|close/i);
+    expect(github.calls[0]?.body).toContain("Devin, and it's working on it now");
+    expect(github.calls[0]?.body).not.toMatch(/never merges/i);
 
     store.updateTask(taskId, {
       ui_state: 'needs_attention',
