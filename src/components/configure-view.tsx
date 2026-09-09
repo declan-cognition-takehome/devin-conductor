@@ -221,7 +221,7 @@ export function ConfigureView() {
               />
               <SettingRow
                 label="Estimate unmetered sessions"
-                description="Self-serve accounts are billed in on-demand credits and Devin reports no ACUs for them, so sessions are priced from how long they ran. Report figures derived this way are marked estimated."
+                description="Self-serve accounts are billed in on-demand credits and Devin reports no ACUs for them, so sessions are priced from the size of their transcript. Report figures derived this way are marked estimated."
                 control={
                   <Switch
                     label="Estimate unmetered sessions"

@@ -71,7 +71,6 @@ export function ReportView() {
     <PageHeader
       title="Report"
       icon={BarChart3}
-      description="Computed from recorded task, session, and pull request history. Ratios show “—” when there is nothing to divide by."
       meta={
         <span className="inline-flex items-center gap-1.5">
           <StatusDot tone={error ? 'critical' : 'positive'} live={!error} />
@@ -155,23 +154,6 @@ export function ReportView() {
               className="bg-canvas"
             />
             <Metric
-              label="Needs attention"
-              value={String(kpis.needsAttention)}
-              className="bg-canvas"
-            />
-            <Metric
-              label="ACUs consumed"
-              value={formatAcus(kpis.totalAcus)}
-              hint={
-                kpis.totalAcus === null
-                  ? 'No metered usage reported yet'
-                  : kpis.costsEstimated
-                    ? 'Estimated from session runtime'
-                    : undefined
-              }
-              className="bg-canvas"
-            />
-            <Metric
               label={kpis.costsEstimated ? 'Spend (est.)' : 'Spend'}
               value={formatUsd(kpis.totalCostUsd)}
               hint={
@@ -220,6 +202,45 @@ export function ReportView() {
                 </FunnelChart>
               </ResponsiveContainer>
             </div>
+          </Section>
+
+          <Section
+            id="adoption"
+            title="Adoption"
+            description="Pull requests Conductor merged for each developer who filed an issue."
+          >
+            {data.authors.length === 0 ? (
+              <EmptyState compact title="No developer activity" />
+            ) : (
+              <table className="w-full text-meta">
+                <thead>
+                  <tr className="border-b border-border-subtle text-left text-ink-faint">
+                    <th scope="col" className="py-1.5 font-normal">
+                      Developer
+                    </th>
+                    {['Issues', 'PRs merged'].map((column) => (
+                      <th key={column} scope="col" className="py-1.5 text-right font-normal">
+                        {column}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border-subtle">
+                  {data.authors.map((author) => (
+                    <tr key={author.authorLogin}>
+                      <td
+                        className="max-w-[240px] truncate py-2 text-ink"
+                        title={author.authorLogin}
+                      >
+                        {author.authorLogin}
+                      </td>
+                      <td className="numeric py-2 text-right text-ink-muted">{author.tasks}</td>
+                      <td className="numeric py-2 text-right text-ink-muted">{author.mergedPrs}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </Section>
 
           <div className="grid gap-8 lg:grid-cols-2">
@@ -271,7 +292,7 @@ export function ReportView() {
               description={
                 kpis.acuRateUsd === null
                   ? 'Set an ACU rate in Configure to price these sessions.'
-                  : 'Session usage is split evenly across the pull requests it produced. Rows marked est. are priced from session runtime because Devin reported no metered usage.'
+                  : undefined
               }
             >
               {data.pullRequestCosts.length === 0 ? (
@@ -330,7 +351,7 @@ function ReportSkeleton() {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 gap-px overflow-hidden rounded-[8px] border border-border-subtle bg-border-subtle sm:grid-cols-4">
-        {Array.from({ length: 10 }, (_, index) => (
+        {Array.from({ length: 8 }, (_, index) => (
           <div key={index} className="space-y-2 bg-canvas px-3 py-2.5">
             <Skeleton className="h-2.5 w-20" />
             <Skeleton className="h-4 w-12" />
