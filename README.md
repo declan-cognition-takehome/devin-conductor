@@ -1,12 +1,11 @@
 # Devin Conductor
 
-Turns trusted GitHub issues into managed Devin remediation sessions, and gives an engineering
-team one place to observe, measure, and control that automation.
+As part of our vision for an event-based SDLC, the Devon Conductor automatically resolves GitHub Issues using Devin, the AI coding agent.
 
 When a member of the configured GitHub organization opens an issue in an enabled repository,
-Conductor durably records a task, dispatches a Devin v3 session scoped to that repository,
+Conductor dispatches a Devin session scoped to that repository,
 keeps a single status comment on the issue up to date, and tracks the resulting pull request
-until a human merges or closes it. Conductor never merges pull requests and never closes issues.
+until a human merges or closes it.
 
 ## Product surfaces
 
