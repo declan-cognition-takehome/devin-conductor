@@ -23,6 +23,12 @@ export async function POST(
   if (task.ui_state === 'pr_ready' || task.ui_state === 'merged') {
     return NextResponse.json({ error: 'Task already produced a pull request' }, { status: 409 });
   }
+  if (task.ui_state === 'closed') {
+    return NextResponse.json(
+      { error: 'The issue is closed on GitHub; reopen it to retry' },
+      { status: 409 },
+    );
+  }
   if (task.ui_state === 'ignored') {
     return NextResponse.json({ error: 'Ignored tasks cannot be retried' }, { status: 409 });
   }

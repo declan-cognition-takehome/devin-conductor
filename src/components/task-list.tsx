@@ -29,6 +29,7 @@ const FILTERS: Array<{ value: UiState | 'all'; label: string }> = [
   { value: 'pr_ready', label: STATE_LABELS.pr_ready },
   { value: 'merged', label: STATE_LABELS.merged },
   { value: 'needs_attention', label: STATE_LABELS.needs_attention },
+  { value: 'closed', label: STATE_LABELS.closed },
   { value: 'ignored', label: STATE_LABELS.ignored },
 ];
 

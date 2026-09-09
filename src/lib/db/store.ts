@@ -375,6 +375,8 @@ export function getTaskByIssue(repositoryId: number, issueNumber: number): TaskR
 }
 
 const TASK_UPDATE_COLUMNS = [
+  'issue_state',
+  'issue_closed_at',
   'internal_state',
   'ui_state',
   'secondary_outcome',
@@ -476,6 +478,7 @@ export function taskCountsByUiState(): Record<UiState, number> {
     pr_ready: 0,
     merged: 0,
     needs_attention: 0,
+    closed: 0,
     ignored: 0,
   };
   for (const row of rows) counts[row.ui_state] = row.count;
@@ -500,6 +503,7 @@ export function recomputeTaskState(taskId: string): TaskRow | undefined {
     hasOpenPr,
     hasMergedPr,
     hasClosedUnmergedPr,
+    issueClosed: task.issue_state === 'closed',
     devinStatus: attempt?.raw_status ?? null,
     devinStatusDetail: attempt?.status_detail ?? null,
     dispatchExhausted: task.internal_state === 'failed',
@@ -514,10 +518,13 @@ export function recomputeTaskState(taskId: string): TaskRow | undefined {
   updateTask(taskId, {
     ui_state: mapped.uiState,
     secondary_outcome: mapped.secondaryOutcome,
+    needs_attention_reason:
+      mapped.uiState === 'needs_attention' ? task.needs_attention_reason : null,
     first_pr_at: task.first_pr_at ?? firstPr?.pr_created_at ?? null,
     merged_at: task.merged_at ?? mergedPr?.merged_at ?? null,
     terminal_at:
       mapped.uiState === 'merged' ||
+      mapped.uiState === 'closed' ||
       (mapped.uiState === 'needs_attention' && mapped.secondaryOutcome !== 'awaiting_input')
         ? (task.terminal_at ?? now())
         : task.terminal_at,

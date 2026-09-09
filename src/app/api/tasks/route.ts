@@ -12,6 +12,7 @@ const UI_STATES: UiState[] = [
   'pr_ready',
   'merged',
   'needs_attention',
+  'closed',
   'ignored',
 ];
 

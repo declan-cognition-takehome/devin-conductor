@@ -1,4 +1,5 @@
-export type UiState = 'queued' | 'working' | 'pr_ready' | 'merged' | 'needs_attention' | 'ignored';
+export type UiState =
+  'queued' | 'working' | 'pr_ready' | 'merged' | 'needs_attention' | 'closed' | 'ignored';
 
 export type InternalState =
   | 'received'
@@ -93,6 +94,8 @@ export interface TaskRow {
   author_id: number | null;
   author_login: string;
   issue_created_at: number | null;
+  issue_state: 'open' | 'closed';
+  issue_closed_at: number | null;
   internal_state: InternalState;
   ui_state: UiState;
   secondary_outcome: SecondaryOutcome | null;

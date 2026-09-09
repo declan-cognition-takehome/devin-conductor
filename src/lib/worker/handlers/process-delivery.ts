@@ -13,6 +13,7 @@ import {
   upsertInstallation,
   upsertPullRequest,
   upsertRepository,
+  updateTask,
   upsertUser,
 } from '../../db/store';
 import { enqueueJob } from '../../queue/jobs';
@@ -23,6 +24,7 @@ import {
   installationRepositoriesEventSchema,
   issuesEventSchema,
   pullRequestEventSchema,
+  type IssuesEvent,
 } from '../../github/events';
 import { syncInstallations } from '../../github/sync';
 
@@ -71,6 +73,10 @@ async function handleIssues(
     return;
   }
   const event = parsed.data;
+  if (event.action === 'closed' || event.action === 'reopened') {
+    handleIssueClosure(deliveryId, event);
+    return;
+  }
   if (event.action !== 'opened') {
     setDeliveryState(deliveryId, 'ignored', `issues action ${event.action} does not start tasks`);
     return;
@@ -171,6 +177,34 @@ async function handleIssues(
     });
     enqueueJob({ jobType: 'dispatch_task', entityId: task.id, dedupeKey: `dispatch:${task.id}` });
   }
+  setDeliveryState(deliveryId, 'processed', null);
+}
+
+/** A human closing or reopening the issue is the only thing that moves a task in or out of Closed. */
+function handleIssueClosure(deliveryId: string, event: IssuesEvent): void {
+  const task = getTaskByIssue(event.repository.id, event.issue.number);
+  if (!task) {
+    setDeliveryState(deliveryId, 'ignored', `issues action ${event.action} has no tracked task`);
+    return;
+  }
+  const closed = event.action === 'closed';
+  const now = Date.now();
+  updateTask(task.id, {
+    issue_state: closed ? 'closed' : 'open',
+    issue_closed_at: closed ? now : null,
+    last_activity_at: now,
+  });
+  addTaskEvent({
+    taskId: task.id,
+    eventType: closed ? 'issue_closed' : 'issue_reopened',
+    source: 'github',
+    summary: closed
+      ? `Issue #${event.issue.number} was closed on GitHub`
+      : `Issue #${event.issue.number} was reopened on GitHub`,
+    metadata: { actor: event.sender?.login ?? null },
+  });
+  recomputeTaskState(task.id);
+  enqueueJob({ jobType: 'sync_comment', entityId: task.id, dedupeKey: `comment:${task.id}` });
   setDeliveryState(deliveryId, 'processed', null);
 }
 

@@ -154,6 +154,41 @@ function issueDelivery(
   return { deliveryId: delivery.id, issueNumber };
 }
 
+/** Persists an `issues.closed`/`issues.reopened` delivery for an existing issue. */
+function issueLifecycleDelivery(issueNumber: number, action: 'closed' | 'reopened'): string {
+  const payload = {
+    action,
+    issue: {
+      id: 10_000 + issueNumber,
+      number: issueNumber,
+      title: `Issue ${issueNumber}`,
+      html_url: `https://github.com/test-org/repo/issues/${issueNumber}`,
+      created_at: '2026-01-01T00:00:00Z',
+      user: { id: 42, login: 'member' },
+    },
+    repository: {
+      id: 5000,
+      full_name: 'test-org/repo',
+      name: 'repo',
+      owner: { login: 'test-org', id: 9 },
+    },
+    sender: { id: 42, login: 'member' },
+  };
+  const delivery = store.insertDelivery({
+    githubDeliveryId: `delivery-${issueNumber}-${action}`,
+    event: 'issues',
+    action,
+    installationId: 1,
+    repositoryId: 5000,
+    repositoryFullName: 'test-org/repo',
+    senderId: 42,
+    senderLogin: 'member',
+    payload: JSON.stringify(payload),
+  });
+  if (!delivery) throw new Error('delivery was not persisted');
+  return delivery.id;
+}
+
 beforeAll(async () => {
   store = await import('@/lib/db/store');
   jobs = await import('@/lib/queue/jobs');
@@ -442,6 +477,27 @@ describe('reconciliation', () => {
     const task = store.getTask(taskId)!;
     expect(task.secondary_outcome).toBe('devin_suspended');
     expect(task.needs_attention_reason).toBe('Devin session ended: suspended (user_request)');
+  });
+
+  it('resolves the task when a human closes the issue, and reverts on reopen', async () => {
+    const { deliveryId, issueNumber } = issueDelivery();
+    await processDelivery(deliveryId);
+    const taskId = store.getTaskByIssue(5000, issueNumber)!.id;
+    await dispatchTask(taskId);
+    devinState.session = session({ status: 'exit', status_detail: 'finished' });
+    await reconcileAttempt(store.listAttempts(taskId)[0]!.id);
+    expect(store.getTask(taskId)?.ui_state).toBe('needs_attention');
+
+    await processDelivery(issueLifecycleDelivery(issueNumber, 'closed'));
+
+    const closed = store.getTask(taskId)!;
+    expect(closed.ui_state).toBe('closed');
+    expect(closed.issue_state).toBe('closed');
+    expect(closed.needs_attention_reason).toBeNull();
+
+    await processDelivery(issueLifecycleDelivery(issueNumber, 'reopened'));
+
+    expect(store.getTask(taskId)?.ui_state).toBe('needs_attention');
   });
 
   it('schedules the next poll only after the reconcile job releases its dedupe key', async () => {
